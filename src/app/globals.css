@@ -1,0 +1,399 @@
+@import "tailwindcss";
+
+/* Short viewports: landscape phones. Used to drop decorative blocks so forms come first. */
+@custom-variant short (@media (max-height: 32rem));
+
+/*
+ * Aexo design tokens.
+ * Source of truth: Aexo_Design_Build_Guide.md. Change values here, never inline.
+ *
+ * Default Tailwind colors, radii and shadows are cleared on purpose so the only
+ * values available in class names are the ones the guide defines.
+ */
+
+@theme {
+  /* ---------------------------------------------------------------- Color (§4) */
+  --color-*: initial;
+  --color-transparent: transparent;
+  --color-current: currentColor;
+
+  --color-canvas: #fffcfa; /* page background */
+  --color-surface: #fffefe; /* cards, inputs */
+  --color-surface-alt: #f7f2ed; /* secondary buttons, subtle fills */
+  --color-paper: #ffffff; /* the invoice document itself (§12) */
+
+  --color-ink: #252522; /* primary actions, headings */
+  --color-foreground: #252522; /* body text ("Body" in the guide) */
+
+  /* Accessibility adjustment: the guide's Muted (#858481) is 3.7:1 on canvas,
+     below the 4.5:1 AA minimum for text. `muted` is the same hue darkened to
+     4.9:1 and is the one to use for text. `muted-soft` keeps the guide value
+     for non-text uses: icons, unchecked control outlines (3.7:1 ≥ 3:1). */
+  --color-muted: #706f6c;
+  --color-muted-soft: #858481;
+
+  --color-border: #efe6dc;
+  --color-border-strong: #e6dbd1;
+
+  --color-accent: #f2805d; /* coral: small details only, never primary CTAs or text */
+  --color-accent-hover: #e97452;
+  --color-accent-pressed: #d96544;
+
+  /* Curated document accents (Phase 6): deep, print-safe tones for the Accent
+     template's rules and markers. Decorative only, never body text. */
+  --color-pine: #2e6b4e;
+  --color-harbor: #2f4d6e;
+
+  /* Semantic colors are for dots, icons and borders. None of them reach 4.5:1
+     as text, so error text and filled destructive buttons use `error-strong`
+     (same hue, 5.0:1). */
+  --color-success: #22c55e;
+  --color-warning: #c8b828;
+  --color-error: #ef4343;
+  --color-error-strong: #d12a2a;
+
+  /* ----------------------------------------------------------- Typography (§5) */
+  --font-sans:
+    var(--font-inter), Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  /* Classic serif document option (Phase 6): system serif stack, no webfont. */
+  --font-serif: Georgia, "Times New Roman", Times, serif;
+
+  --font-weight-*: initial;
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+
+  /* Display, H1 and H2 scale down on small screens and reach the guide values
+     by tablet/desktop. Everything else uses the guide's fixed size. */
+  --text-*: initial;
+  --text-display: clamp(2.5rem, 1.5rem + 2.6vw, 3.5rem); /* 40 → 44 (768) → 51 (1024) → 56 */
+  --text-display--line-height: 1.1;
+  --text-display--font-weight: 500;
+  --text-display--letter-spacing: -0.025em;
+
+  --text-h1: clamp(2rem, 1.6rem + 1.8vw, 2.5rem);
+  --text-h1--line-height: 1.15;
+  --text-h1--font-weight: 500;
+  --text-h1--letter-spacing: -0.02em;
+
+  --text-h2: clamp(1.5rem, 1.35rem + 0.7vw, 1.75rem);
+  --text-h2--line-height: 1.25;
+  --text-h2--font-weight: 500;
+  --text-h2--letter-spacing: -0.015em;
+
+  --text-h3: 1.25rem;
+  --text-h3--line-height: 1.35;
+  --text-h3--font-weight: 500;
+  --text-h3--letter-spacing: -0.01em;
+
+  --text-body-lg: 1.125rem;
+  --text-body-lg--line-height: 1.5;
+
+  --text-body: 1rem;
+  --text-body--line-height: 1.5;
+
+  --text-label: 0.875rem;
+  --text-label--line-height: 1.4;
+  --text-label--font-weight: 500;
+
+  --text-caption: 0.8125rem;
+  --text-caption--line-height: 1.4;
+
+  --text-button: 0.9375rem;
+  --text-button--line-height: 1.4;
+  --text-button--font-weight: 500;
+
+  /* -------------------------------------------------------------- Radius (§6) */
+  --radius-*: initial;
+  --radius-xs: 6px;
+  --radius-sm: 8px;
+  --radius-md: 12px; /* inputs */
+  --radius-lg: 16px; /* cards */
+  --radius-xl: 24px; /* large panels */
+  --radius-pill: 9999px; /* buttons */
+
+  /* ------------------------------------------------------- Shadows (§9, §20) */
+  --shadow-*: initial;
+  --shadow-control: 0 1px 3px rgb(0 0 0 / 0.1);
+  --shadow-elevated: 0 6px 24px rgb(0 0 0 / 0.05);
+  --shadow-focus: 0 0 0 3px rgb(37 37 34 / 0.08);
+  --shadow-focus-error: 0 0 0 3px rgb(239 67 67 / 0.12);
+
+  /* ------------------------------------------------------- Breakpoints (§18) */
+  /* Mobile < 768 · Tablet 768–1023 · Desktop 1024+ */
+  --breakpoint-sm: 40rem; /* 640 */
+  --breakpoint-md: 48rem; /* 768 */
+  --breakpoint-lg: 64rem; /* 1024 */
+  --breakpoint-xl: 80rem; /* 1280 */
+  --breakpoint-2xl: 90rem; /* 1440 */
+  --breakpoint-3xl: 120rem; /* 1920 */
+
+  /* --------------------------------------------------------- Containers */
+  --container-page: 90rem; /* 1440: widest content area */
+  --container-reading: 40rem; /* 640: forms, messages, reading-width text */
+
+  /* -------------------------------------------------------------- Motion (§19) */
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --animate-loading-dot: loading-dot 1.2s var(--ease-standard) infinite;
+  /* Entrance: 250ms fade + 8px rise. Stagger with an inline animation-delay. */
+  --animate-fade-up: fade-up 250ms var(--ease-standard) both;
+
+  @keyframes fade-up {
+    from {
+      opacity: 0;
+      translate: 0 8px;
+    }
+  }
+
+  @keyframes loading-dot {
+    0%,
+    80%,
+    100% {
+      opacity: 0.25;
+    }
+    40% {
+      opacity: 1;
+    }
+  }
+}
+
+/*
+ * Spacing (§7).
+ * Tailwind's default 4px step is kept (p-1 = 4px, p-2 = 8px, ... p-30 = 120px).
+ * Stick to the guide scale: 1, 2, 3, 4, 6, 8, 10, 12, 16, 20, 24, 30.
+ *
+ * Layout spacing is responsive, so it lives in variables that change at
+ * breakpoints and is exposed as utilities: px-gutter, py-section, p-card, h-header.
+ */
+:root {
+  --layout-gutter: 1rem; /* 16 */
+  --layout-section: 3rem; /* 48 */
+  --layout-card: 1.5rem; /* 24 */
+  --layout-header: 4rem; /* 64 */
+  --motion-fast: 150ms;
+  --motion-base: 200ms;
+  --motion-slow: 250ms;
+}
+
+@media (width >= 40rem) {
+  :root {
+    --layout-gutter: 1.25rem; /* 20 */
+  }
+}
+
+@media (width >= 48rem) {
+  :root {
+    --layout-gutter: 1.5rem; /* 24 */
+    --layout-section: 4rem; /* 64 */
+  }
+}
+
+@media (width >= 64rem) {
+  :root {
+    --layout-gutter: 2rem; /* 32 */
+    --layout-section: 6rem; /* 96 */
+    --layout-card: 2rem; /* 32 */
+  }
+}
+
+/*
+ * Invoice document type scale, in "document pixels" (--doc, defined on
+ * .invoice-doc below). Inlined so each utility resolves --doc on the element
+ * that uses it. Only use these inside an invoice document.
+ */
+@theme inline {
+  --text-doc-xs: calc(var(--doc) * 8.5);
+  --text-doc-xs--line-height: 1.4;
+  --text-doc-sm: calc(var(--doc) * 9.5);
+  --text-doc-sm--line-height: 1.45;
+  --text-doc-base: calc(var(--doc) * 11);
+  --text-doc-base--line-height: 1.5;
+  --text-doc-md: calc(var(--doc) * 13);
+  --text-doc-md--line-height: 1.35;
+  --text-doc-lg: calc(var(--doc) * 16);
+  --text-doc-lg--line-height: 1.3;
+  --text-doc-xl: calc(var(--doc) * 22);
+  --text-doc-xl--line-height: 1.15;
+  --text-doc-2xl: calc(var(--doc) * 34);
+  --text-doc-2xl--line-height: 1.05;
+}
+
+@theme inline {
+  --spacing-gutter: var(--layout-gutter);
+  --spacing-section: var(--layout-section);
+  --spacing-card: var(--layout-card);
+  --spacing-header: var(--layout-header);
+}
+
+/*
+ * Invoice document (guide §12).
+ * A document is laid out on a 600-unit-wide page. --doc is one unit, derived
+ * from the width of the nearest `@container` ancestor, so the whole document
+ * (text, spacing, radii) scales with its frame: a large preview on desktop, a
+ * thumbnail in the template picker, real size when printed. Spacing utilities
+ * (p-4, gap-2…) inside the document are in document units too.
+ */
+@layer components {
+  .invoice-doc {
+    --doc: calc(100cqw / 600);
+    --spacing: calc(var(--doc) * 4);
+    --radius-xs: calc(var(--doc) * 3);
+    --radius-sm: calc(var(--doc) * 4);
+    width: 100%;
+    background-color: var(--color-paper);
+    color: var(--color-ink);
+    font-size: calc(
+      var(--doc) * 11
+    ); /* = text-doc-base; @theme inline values are not exposed as variables */
+    line-height: 1.5;
+    font-variant-numeric: tabular-nums;
+    overflow-wrap: anywhere;
+  }
+}
+
+/* ------------------------------------------------------------------- Base */
+@layer base {
+  @media (prefers-reduced-motion: no-preference) {
+    html {
+      scroll-behavior: smooth;
+    }
+  }
+
+  html {
+    color-scheme: light;
+    background-color: var(--color-canvas);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    -webkit-tap-highlight-color: transparent;
+    text-size-adjust: 100%;
+  }
+
+  body {
+    min-height: 100dvh;
+    background-color: var(--color-canvas);
+    font-size: var(--text-body);
+    line-height: var(--text-body--line-height);
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-weight: var(--font-weight-medium);
+    text-wrap: balance;
+  }
+
+  ::selection {
+    background-color: color-mix(in srgb, var(--color-accent) 25%, transparent);
+  }
+
+  /* One visible focus style for everything keyboard-reachable.
+     Form controls override it with the guide's border + ring treatment. */
+  :focus-visible {
+    outline: 2px solid var(--color-ink);
+    outline-offset: 2px;
+  }
+
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  summary,
+  label[for] {
+    cursor: pointer;
+  }
+
+  /* Lock page scroll while a modal <dialog> or a mobile menu sheet is open. */
+  html:has(dialog[open]:modal) {
+    overflow: hidden;
+  }
+
+  @media (width < 40rem) {
+    html:has([data-sheet]:popover-open) {
+      overflow: hidden;
+    }
+  }
+
+  /* Native popovers come with UA borders, padding and centering. Components
+     position and style them explicitly. */
+  [popover] {
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    overflow: visible;
+  }
+
+  dialog::backdrop,
+  [data-sheet]::backdrop {
+    background-color: rgb(37 37 34 / 0.4);
+    opacity: 0;
+    transition:
+      opacity var(--motion-base) var(--ease-standard),
+      overlay var(--motion-base) allow-discrete,
+      display var(--motion-base) allow-discrete;
+  }
+
+  dialog[open]::backdrop {
+    opacity: 1;
+  }
+
+  @starting-style {
+    dialog[open]::backdrop {
+      opacity: 0;
+    }
+  }
+
+  /* Menus only dim the page when they open as a bottom sheet on phones. */
+  @media (width < 40rem) {
+    [data-sheet]:popover-open::backdrop {
+      opacity: 1;
+    }
+
+    @starting-style {
+      [data-sheet]:popover-open::backdrop {
+        opacity: 0;
+      }
+    }
+  }
+
+  /* Invoice creator: keep focused fields clear of the sticky action bar (phones,
+     tablets) and of the sticky header (desktop). */
+  html:has([data-action-bar]) {
+    scroll-padding-bottom: 6rem;
+  }
+
+  @media (width >= 64rem) {
+    html:has([data-invoice-workspace]) {
+      scroll-padding-top: calc(var(--layout-header) + 1.5rem);
+      scroll-padding-bottom: 1.5rem;
+    }
+  }
+
+  /* Native date input: keep the platform picker but align it with other controls. */
+  input[type="date"]::-webkit-date-and-time-value {
+    text-align: left;
+  }
+
+  /* Chromium/WebKit: hide the native icon but stretch it over the whole field, so
+     a tap anywhere opens the picker. DateInput draws its own icon in its place. */
+  input[type="date"]::-webkit-calendar-picker-indicator {
+    position: absolute;
+    inset: 0;
+    width: auto;
+    height: auto;
+    opacity: 0;
+    cursor: pointer;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
