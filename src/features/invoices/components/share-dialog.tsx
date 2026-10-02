@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
-import { Copy, Link2 } from "lucide-react";
+import { Copy, Link2, RefreshCw } from "lucide-react";
 import {
   Button,
   Dialog,
@@ -14,7 +14,7 @@ import {
 } from "@/components/ui";
 import { routes } from "@/config/routes";
 import { publicEnv } from "@/lib/env";
-import { fetchShareState, setSharingEnabled } from "@/features/invoices/actions";
+import { fetchShareState, rotateShareToken, setSharingEnabled } from "@/features/invoices/actions";
 
 type ShareDialogProps = {
   invoiceId: string;
@@ -60,6 +60,7 @@ export function ShareDialog({ invoiceId, number, open, onClose }: ShareDialogPro
   const [enabled, setEnabled] = useState(false);
   const [saving, startSaving] = useTransition();
   const [copied, setCopied] = useState(false);
+  const [confirmingNew, setConfirmingNew] = useState(false);
   const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -96,6 +97,7 @@ export function ShareDialog({ invoiceId, number, open, onClose }: ShareDialogPro
     setLoading(true);
     setLoadError(false);
     setCopied(false);
+    setConfirmingNew(false);
     onClose();
   };
 
@@ -131,6 +133,28 @@ export function ShareDialog({ invoiceId, number, open, onClose }: ShareDialogPro
     } else {
       toast({ title: "Could not copy. Long-press the link to copy it manually.", tone: "error" });
     }
+  };
+
+  const handleNewLink = () => {
+    startSaving(async () => {
+      try {
+        const freshToken = await rotateShareToken(invoiceId);
+        setToken(freshToken);
+        setCopied(false);
+        setConfirmingNew(false);
+        toast({
+          title: enabled
+            ? "New link created. The old link no longer works."
+            : "New link created. Switch sharing on to use it.",
+          tone: "success",
+        });
+      } catch (error) {
+        toast({
+          title: error instanceof Error ? error.message : "Could not create a new link. Try again.",
+          tone: "error",
+        });
+      }
+    });
   };
 
   return (
@@ -195,6 +219,51 @@ export function ShareDialog({ invoiceId, number, open, onClose }: ShareDialogPro
               </p>
             </div>
           ) : null}
+
+          <div className="border-t border-border pt-4">
+            {confirmingNew ? (
+              <div className="flex flex-col gap-2">
+                <p className="text-body text-ink">
+                  Replace this link? The current URL will stop working immediately.
+                </p>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <Button
+                    onClick={handleNewLink}
+                    loading={saving}
+                    leadingIcon={
+                      <RefreshCw size={iconSize.md} strokeWidth={iconStroke} aria-hidden />
+                    }
+                  >
+                    Replace link
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    onClick={() => setConfirmingNew(false)}
+                    disabled={saving}
+                  >
+                    Keep current link
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2">
+                <Button
+                  variant="ghost"
+                  onClick={() => setConfirmingNew(true)}
+                  disabled={saving}
+                  leadingIcon={
+                    <RefreshCw size={iconSize.md} strokeWidth={iconStroke} aria-hidden />
+                  }
+                  className="self-start"
+                >
+                  Create a new link
+                </Button>
+                <p className="text-caption text-muted">
+                  Use this if the link went to the wrong person. The old URL stops working.
+                </p>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </Dialog>

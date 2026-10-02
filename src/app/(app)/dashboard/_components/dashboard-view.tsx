@@ -12,6 +12,7 @@ import {
   STATUS_FILTERS,
   filterByStatus,
   matchesQuery,
+  selectAttentionDrafts,
   statusCounts,
   type SavedInvoiceSummary,
   type StatusFilter,
@@ -94,6 +95,13 @@ export function DashboardView({
   );
   const counts = useMemo(() => statusCounts(invoices), [invoices]);
   const awaiting = counts.sent + counts.overdue;
+  const attention = useMemo(() => selectAttentionDrafts(invoices), [invoices]);
+
+  const showAllDrafts = () => {
+    setQuery("");
+    setFilter("draft");
+    document.getElementById("invoice-results")?.scrollIntoView({ block: "nearest" });
+  };
 
   return (
     <main id="main" className="flex-1 py-6 md:py-8">
@@ -115,11 +123,66 @@ export function DashboardView({
 
         {invoices.length > 0 ? (
           <>
-            <div className="grid grid-cols-3 gap-3" role="group" aria-label="Invoice overview">
+            <div
+              className="grid grid-cols-2 gap-3 sm:grid-cols-4"
+              role="group"
+              aria-label="Invoice overview"
+            >
+              <Stat label="Total" value={invoices.length} />
               <Stat label="Drafts" value={counts.draft} />
               <Stat label="Awaiting payment" value={awaiting} />
               <Stat label="Paid" value={counts.paid} />
             </div>
+
+            {attention.length > 0 ? (
+              <section
+                aria-labelledby="attention-heading"
+                className="flex flex-col gap-1 rounded-xl border border-border bg-surface p-4 sm:p-5"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+                  <h2 id="attention-heading" className="text-h3 text-ink">
+                    Needs attention
+                  </h2>
+                  {counts.draft > attention.length ? (
+                    <button
+                      type="button"
+                      onClick={showAllDrafts}
+                      className="inline-flex min-h-11 items-center text-label text-ink underline-offset-4 hover:underline"
+                    >
+                      View all {counts.draft} drafts
+                    </button>
+                  ) : null}
+                </div>
+                <p className="text-body text-muted">
+                  Unfinished drafts — continue where you left off.
+                </p>
+                <ul className="mt-2 flex flex-col">
+                  {attention.map((invoice) => (
+                    <li
+                      key={invoice.id}
+                      className="flex items-center justify-between gap-3 border-t border-border py-2.5 first:border-t-0 first:pt-1 last:pb-0"
+                    >
+                      <div className="flex min-w-0 flex-col gap-0.5">
+                        <InvoiceLink id={invoice.id} number={invoice.number} />
+                        <p className="truncate text-caption text-muted">
+                          {invoice.clientName || "No client yet"}
+                          {shortDate(invoice.updatedAt)
+                            ? ` · Updated ${shortDate(invoice.updatedAt)}`
+                            : null}
+                        </p>
+                      </div>
+                      <Link
+                        href={routes.invoiceEdit(invoice.id)}
+                        aria-label={`Continue editing ${invoice.number}`}
+                        className="inline-flex min-h-11 shrink-0 items-center text-label text-ink underline-offset-4 hover:underline"
+                      >
+                        Continue
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ) : null}
 
             <div className="flex flex-col gap-3 sm:flex-row">
               <div className="min-w-0 flex-1">
@@ -159,7 +222,11 @@ export function DashboardView({
               </div>
             </div>
 
-            <p aria-live="polite" className="text-label font-normal text-muted">
+            <p
+              id="invoice-results"
+              aria-live="polite"
+              className="scroll-mt-24 text-label font-normal text-muted"
+            >
               {visible.length === invoices.length
                 ? `Showing all ${invoices.length} invoices.`
                 : `Showing ${visible.length} of ${invoices.length} invoices.`}

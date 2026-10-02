@@ -5,7 +5,7 @@ import { Logo } from "@/components/brand/logo";
 export default function PublicLayout({ children }: LayoutProps<"/">) {
   return (
     <>
-      <header className="border-b border-border bg-canvas">
+      <header className="border-b border-border bg-canvas print:hidden">
         <Container className="flex h-header items-center">
           <Logo />
         </Container>

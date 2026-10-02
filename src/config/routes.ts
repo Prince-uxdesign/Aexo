@@ -31,6 +31,8 @@ export const routes = {
   dashboard: "/dashboard",
   invoices: "/invoices",
   invoice: (id: string) => `/invoices/${encodeURIComponent(id)}`,
+  invoiceEdit: (id: string) => `/invoices/${encodeURIComponent(id)}/edit`,
+  invoicePrint: (id: string) => `/invoices/${encodeURIComponent(id)}/print`,
   templates: "/templates",
 
   // Development only

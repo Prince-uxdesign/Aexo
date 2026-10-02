@@ -237,7 +237,7 @@ export function TotalsBlock({
   ].filter((row): row is { label: string; value: string } => Boolean(row));
 
   return (
-    <dl className={cn("flex flex-col gap-1.5", className)}>
+    <dl className={cn("flex flex-col gap-1.5 print:break-inside-avoid", className)}>
       {rows.map((row) => (
         <div key={row.label} className="flex justify-between gap-6">
           <dt className="text-muted">{row.label}</dt>

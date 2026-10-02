@@ -13,7 +13,7 @@ import { AccountMenu } from "./account-menu";
  */
 export function AppHeader({ name, email }: { name: string | null; email: string }) {
   return (
-    <header className="sticky top-0 z-40 border-b border-border bg-canvas">
+    <header className="sticky top-0 z-40 border-b border-border bg-canvas print:hidden">
       <Container className="flex h-header items-center gap-3">
         <Logo />
         <nav aria-label="Product" className="ml-2 hidden sm:block">

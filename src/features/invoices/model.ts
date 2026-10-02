@@ -118,6 +118,14 @@ export const STATUS_FILTERS: { id: StatusFilter; label: string }[] = [
   { id: "cancelled", label: "Cancelled" },
 ];
 
+/** Drafts needing attention: unfinished work, newest first, capped for the spotlight. */
+export function selectAttentionDrafts(
+  invoices: SavedInvoiceSummary[],
+  limit = 3,
+): SavedInvoiceSummary[] {
+  return invoices.filter((invoice) => invoice.status === "draft").slice(0, limit);
+}
+
 /** Matches invoice number, client name or business (sender) name. */
 export function matchesQuery(invoice: SavedInvoiceSummary, query: string): boolean {
   const q = query.trim().toLowerCase();
@@ -154,6 +162,18 @@ const SHARE_TOKEN_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0
 /** Tokens are random UUIDs: unguessable and unrelated to internal ids. */
 export function isShareToken(value: unknown): value is string {
   return typeof value === "string" && SHARE_TOKEN_PATTERN.test(value);
+}
+
+/**
+ * True when a Supabase error just means the Phase 15 RPC
+ * (`get_shared_invoice`) isn't on the database yet, so the caller should fall
+ * back to the Phase 9 direct-table read. Any other error is a genuine failure
+ * and must surface instead of masquerading as a broken link.
+ */
+export function isShareRpcMissing(error: { code?: string; message?: string } | null): boolean {
+  if (!error) return false;
+  if (error.code === "PGRST202" || error.code === "42883") return true;
+  return /could not find the function/i.test(error.message ?? "");
 }
 
 export type ShareState = {

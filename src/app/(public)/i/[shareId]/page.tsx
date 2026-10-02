@@ -12,6 +12,7 @@ import { formatMoney } from "@/lib/format/currency";
 import { formatDate } from "@/lib/format/date";
 import { getSharedInvoice } from "@/features/invoices/queries";
 import { cn } from "@/lib/utils/cn";
+import { SharedInvoiceActions } from "./_components/shared-actions";
 
 export async function generateMetadata({ params }: PageProps<"/i/[shareId]">): Promise<Metadata> {
   const { shareId } = await params;
@@ -55,11 +56,12 @@ export default async function SharedInvoicePage({ params }: PageProps<"/i/[share
   ];
 
   return (
-    <main id="main" className="flex-1 py-6 md:py-10">
-      <Container className="flex max-w-3xl flex-col gap-5 md:gap-6">
+    <main id="main" className="print:bg-white flex-1 py-6 md:py-10 print:py-0">
+      <Container className="flex max-w-3xl flex-col gap-5 md:gap-6 print:max-w-none print:px-0">
         <section
           aria-labelledby="shared-heading"
-          className="min-w-0 rounded-lg border border-border bg-surface p-5 sm:p-6"
+          data-print-screen-only
+          className="min-w-0 rounded-lg border border-border bg-surface p-5 sm:p-6 print:hidden"
         >
           <p className="text-label font-normal text-muted">Shared invoice</p>
           <h1 id="shared-heading" className="mt-1 text-h2 break-words text-ink">
@@ -99,14 +101,19 @@ export default async function SharedInvoicePage({ params }: PageProps<"/i/[share
           ) : null}
         </section>
 
-        <InvoiceDocument
-          invoice={invoice}
-          overflow="grow"
-          label={`Invoice ${invoice.number} from ${sender}`}
-          className="border border-border shadow-elevated"
-        />
+        <SharedInvoiceActions number={invoice.number} />
 
-        <footer className="flex flex-col items-center gap-1 pb-4 text-center">
+        {/* Printable width (≈190mm): container units resolve to true print size. */}
+        <div className="mx-auto w-full max-w-[190mm]">
+          <InvoiceDocument
+            invoice={invoice}
+            overflow="grow"
+            label={`Invoice ${invoice.number} from ${sender}`}
+            className="border border-border shadow-elevated print:border-0 print:shadow-none"
+          />
+        </div>
+
+        <footer className="flex flex-col items-center gap-1 pb-4 text-center print:hidden">
           <p className="text-caption text-muted">
             Sent with {siteConfig.name} ·{" "}
             <Link href={routes.home} className="underline underline-offset-4 hover:text-ink">

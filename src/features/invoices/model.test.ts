@@ -2,11 +2,13 @@ import { describe, expect, it } from "vitest";
 import {
   filterByStatus,
   isInvoiceStatus,
+  isShareRpcMissing,
   isShareToken,
   matchesQuery,
   rowToShareState,
   rowToSharedInvoice,
   rowToSummary,
+  selectAttentionDrafts,
   statusCounts,
   type SavedInvoiceSummary,
 } from "./model";
@@ -108,6 +110,27 @@ describe("statusCounts", () => {
   });
 });
 
+describe("selectAttentionDrafts", () => {
+  const invoices = [
+    summary({ id: "1", status: "paid" }),
+    summary({ id: "2", status: "draft" }),
+    summary({ id: "3", status: "sent" }),
+    summary({ id: "4", status: "draft" }),
+    summary({ id: "5", status: "draft" }),
+    summary({ id: "6", status: "draft" }),
+  ];
+
+  it("returns only drafts, newest first, capped at three", () => {
+    expect(selectAttentionDrafts(invoices).map((i) => i.id)).toEqual(["2", "4", "5"]);
+    expect(selectAttentionDrafts(invoices, 2).map((i) => i.id)).toEqual(["2", "4"]);
+  });
+
+  it("returns empty when nothing needs attention", () => {
+    expect(selectAttentionDrafts([summary({ status: "paid" })])).toEqual([]);
+    expect(selectAttentionDrafts([])).toEqual([]);
+  });
+});
+
 describe("isShareToken", () => {
   it("accepts UUID-shaped tokens and rejects internal ids and junk", () => {
     expect(isShareToken("a8098c1a-f86e-11da-bd1a-00112444be1e")).toBe(true);
@@ -164,5 +187,20 @@ describe("rowToSharedInvoice", () => {
   it("returns null for missing or item-less documents", () => {
     expect(rowToSharedInvoice({ number: "x", data: null })).toBeNull();
     expect(rowToSharedInvoice({ number: "x", data: { ...data, items: "nope" } })).toBeNull();
+  });
+});
+
+describe("isShareRpcMissing", () => {
+  it("detects a missing RPC so the reader can fall back, and nothing else", () => {
+    expect(isShareRpcMissing({ code: "PGRST202", message: "Could not find the function" })).toBe(
+      true,
+    );
+    expect(isShareRpcMissing({ code: "42883", message: "function does not exist" })).toBe(true);
+    expect(
+      isShareRpcMissing({ message: "Could not find the function public.get_shared_invoice" }),
+    ).toBe(true);
+    expect(isShareRpcMissing({ code: "42501", message: "permission denied" })).toBe(false);
+    expect(isShareRpcMissing({ code: "XX000", message: "connection failed" })).toBe(false);
+    expect(isShareRpcMissing(null)).toBe(false);
   });
 });

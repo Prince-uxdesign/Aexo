@@ -1,5 +1,6 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { requireUserId } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
@@ -183,4 +184,36 @@ export async function setSharingEnabled(id: string, enabled: boolean): Promise<s
   refresh();
   refreshShared(data.share_token);
   return data.share_token;
+}
+
+/**
+ * Replace the share token with a fresh random one. The old link stops working
+ * immediately — use it when a link was sent to the wrong person or posted
+ * somewhere public. The on/off state is preserved: a disabled link stays
+ * disabled, just under a new unguessable URL. Only the owner can do this.
+ */
+export async function rotateShareToken(id: string): Promise<string> {
+  const userId = await requireUserId(routes.dashboard);
+  const supabase = await createClient();
+  const { data: existing, error: readError } = await supabase
+    .from("invoices")
+    .select("share_token")
+    .eq("id", id)
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (readError || !existing || typeof existing.share_token !== "string") {
+    throw new Error("That invoice couldn't be found.");
+  }
+  const freshToken = randomUUID();
+  const { error } = await supabase
+    .from("invoices")
+    .update({ share_token: freshToken })
+    .eq("id", id)
+    .eq("user_id", userId);
+  if (error) throw new Error("Could not create a new link. Try again.");
+  refresh();
+  // The old URL must die everywhere it was cached; the new one goes live.
+  refreshShared(existing.share_token);
+  refreshShared(freshToken);
+  return freshToken;
 }

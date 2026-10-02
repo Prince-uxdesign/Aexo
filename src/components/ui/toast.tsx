@@ -84,7 +84,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         ref={regionRef}
         popover="manual"
         aria-label="Notifications"
-        className="pointer-events-none fixed inset-x-0 top-auto bottom-0 flex w-full max-w-none justify-center px-gutter pb-[max(1rem,env(safe-area-inset-bottom))] sm:justify-end"
+        className="pointer-events-none fixed inset-x-0 top-auto bottom-0 flex w-full max-w-none justify-center px-gutter pb-[max(1rem,env(safe-area-inset-bottom))] sm:justify-end print:hidden"
       >
         <ol
           aria-live="polite"

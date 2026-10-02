@@ -2,7 +2,16 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Check, ChevronDown, Copy, MoreHorizontal, Pencil, Share2, Trash2 } from "lucide-react";
+import {
+  Check,
+  ChevronDown,
+  Copy,
+  Eye,
+  MoreHorizontal,
+  Pencil,
+  Share2,
+  Trash2,
+} from "lucide-react";
 import {
   Badge,
   Button,
@@ -148,11 +157,18 @@ export function InvoiceMenu({ invoice }: { invoice: SavedInvoiceSummary }) {
         }
       >
         <MenuItem
-          icon={<Pencil {...icon} />}
+          icon={<Eye {...icon} />}
           disabled={pending}
           onSelect={() => router.push(routes.invoice(invoice.id))}
         >
-          Open and edit
+          Open
+        </MenuItem>
+        <MenuItem
+          icon={<Pencil {...icon} />}
+          disabled={pending}
+          onSelect={() => router.push(routes.invoiceEdit(invoice.id))}
+        >
+          Edit
         </MenuItem>
         <MenuItem
           icon={<Copy {...icon} />}

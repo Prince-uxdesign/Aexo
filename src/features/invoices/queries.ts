@@ -4,6 +4,7 @@ import { connection } from "next/server";
 import { getUserId } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import {
+  isShareRpcMissing,
   isShareToken,
   rowToSavedInvoice,
   rowToSharedInvoice,
@@ -80,21 +81,33 @@ function blankInvoiceFallback(): Invoice {
 /* ---------------------------------------------------------- Sharing (Phase 9) */
 
 /**
- * The public document behind /i/<token>. No authentication: RLS only returns
- * rows with sharing enabled, and the query selects the document columns only —
- * internal ids, user ids and account metadata never leave the server.
- * Null covers invalid, disabled, deleted and never-shared links alike.
+ * The public document behind /i/<token>. No authentication. The Phase 15 RPC
+ * returns the document columns for one exact token only, so unrelated rows
+ * are never reachable — not even listable. Null covers invalid, disabled,
+ * deleted and never-shared links alike; genuine database failures throw so
+ * the share route shows its error state instead of a fake broken link.
  */
 export const getSharedInvoice = cache(async (token: string): Promise<SharedInvoice | null> => {
   await connection();
   if (!isShareToken(token)) return null;
   const supabase = await createClient();
-  const { data, error } = await supabase
+  const { data, error } = await supabase.rpc("get_shared_invoice", { p_token: token });
+  if (!error) {
+    const row = Array.isArray(data) ? data[0] : data;
+    if (!row) return null;
+    return rowToSharedInvoice(row as { number?: unknown; data?: unknown });
+  }
+  // Databases without the Phase 15 migration fall back to the Phase 9 read.
+  if (!isShareRpcMissing({ code: error.code, message: error.message })) {
+    throw new Error("Could not load this invoice. Try again.");
+  }
+  const fallback = await supabase
     .from("invoices")
     .select("number, data")
     .eq("share_token", token)
     .eq("sharing_enabled", true)
     .maybeSingle();
-  if (error || !data) return null;
-  return rowToSharedInvoice(data);
+  if (fallback.error) throw new Error("Could not load this invoice. Try again.");
+  if (!fallback.data) return null;
+  return rowToSharedInvoice(fallback.data);
 });

@@ -78,9 +78,11 @@ app/
   (auth)/sign-in, sign-up, …      /sign-in …        authentication (built)
   auth/confirm/route.ts           /auth/confirm     email link handler (built)
   (app)/account                   /account          profile (built), protected
-  (app)/dashboard                 /dashboard        saved invoices: stats, search, filter, cards/table (built), protected
+  (app)/dashboard                 /dashboard        overview stats, drafts spotlight, search, filter, cards/table (built), protected
   (app)/invoices                  /invoices         redirects to /dashboard (built), protected
-  (app)/invoices/[id]             /invoices/:id     edit a saved invoice (built), protected
+  (app)/invoices/[id]             /invoices/:id     detail view: status, facts, actions, document (built), protected
+  (app)/invoices/[id]/edit       /invoices/:id/edit editor for a saved invoice (built), protected
+  (app)/invoices/[id]/print      /invoices/:id/print print view of the same document; browser dialog prints or saves PDF (built), protected
 ```
 
 ## Design tokens
@@ -136,6 +138,14 @@ Use `pointer-coarse:` for touch-specific sizing (it's how the small button keeps
   default off) plus an anon SELECT policy gated on `sharing_enabled`
   (`supabase/migrations/20261002150000_invoice_sharing.sql`). Public reads select the
   document columns only. Edits revalidate the public path, so links stay live.
+- Hardened (Phase 15): public reads go through the `get_shared_invoice(uuid)`
+  SECURITY DEFINER RPC (one exact token, document columns only) and the broad
+  anon table access is revoked
+  (`supabase/migrations/20261002160000_shared_invoice_rpc.sql`), so shared rows
+  are no longer listable. Owners can rotate the token (`rotateShareToken`);
+  database failures throw to the share route's error state instead of
+  masquerading as broken links. The public page adds loading/error states and
+  a Print / Save PDF action that prints the document only.
 - Not yet: storage buckets, generated types.
 
 ## Invoice documents

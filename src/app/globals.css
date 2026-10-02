@@ -397,3 +397,54 @@
     }
   }
 }
+
+/*
+ * Print + PDF (Phase 14). The printed/PDF document is the same DOM as the
+ * preview: identical template, type, spacing and logo. The print view sizes
+ * the document frame to the printable width, so container units resolve to
+ * true print size. Unlayered, so these rules win over screen utilities.
+ */
+@page {
+  size: A4;
+  margin: 11mm 9mm 12mm;
+}
+
+@media print {
+  html,
+  body {
+    background: #fff;
+  }
+
+  /* Screen-only chrome never reaches paper (belt and braces: the print view
+     is already document-only, and headers carry print:hidden). */
+  [data-print-screen-only] {
+    display: none !important;
+  }
+
+  .invoice-doc {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    /* Screen previews lay the page out as a flex column; on paper the content
+       must fragment naturally across pages instead. */
+    display: block;
+  }
+
+  .invoice-doc > * {
+    flex: none;
+  }
+
+  /* Long invoices: rows stay whole, headers repeat, tables may span pages. */
+  .invoice-doc table {
+    page-break-inside: auto;
+  }
+
+  .invoice-doc thead {
+    display: table-header-group;
+    break-inside: avoid;
+  }
+
+  .invoice-doc tbody tr,
+  .invoice-doc img {
+    break-inside: avoid;
+  }
+}
