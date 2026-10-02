@@ -58,7 +58,7 @@ blocks open redirects.
 
 ## Flows
 
-- **Sign up** → (confirmation email) → `/auth/confirm` → `next` (default `/account`).
+- **Sign up** → (confirmation email) → `/auth/confirm` → `next` (default `/dashboard`).
   An existing email gets "This email is already associated with an account."
 - **Sign in** → `next`.
 - **Forgot password** → always "Check your email" (doesn't reveal whether an account exists)
