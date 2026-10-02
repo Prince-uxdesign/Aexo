@@ -1,14 +1,17 @@
 import { describe, expect, it } from "vitest";
 import {
   filterByStatus,
+  isInvoiceSort,
   isInvoiceStatus,
   isShareRpcMissing,
   isShareToken,
   matchesQuery,
+  partitionArchived,
   rowToShareState,
   rowToSharedInvoice,
   rowToSummary,
   selectAttentionDrafts,
+  sortInvoices,
   statusCounts,
   type SavedInvoiceSummary,
 } from "./model";
@@ -21,9 +24,11 @@ function summary(overrides: Partial<SavedInvoiceSummary> = {}): SavedInvoiceSumm
     currency: "USD",
     total: 250,
     clientName: "Harbor & Pine Co.",
+    clientEmail: "hello@harborpine.co",
     senderName: "Lumen Studio",
     issueDate: "2026-10-02",
     dueDate: "2026-11-01",
+    archived: false,
     updatedAt: "2026-10-02T10:00:00Z",
     createdAt: "2026-10-02T09:00:00Z",
     ...overrides,
@@ -75,6 +80,11 @@ describe("matchesQuery", () => {
     expect(matchesQuery(invoice, "INV-0001")).toBe(true);
     expect(matchesQuery(invoice, "harbor")).toBe(true);
     expect(matchesQuery(invoice, "LUMEN")).toBe(true);
+  });
+
+  it("matches the client email", () => {
+    expect(matchesQuery(invoice, "hello@harborpine.co")).toBe(true);
+    expect(matchesQuery(invoice, "HARBORPINE")).toBe(true);
   });
 
   it("ignores case and surrounding spaces, and empty means all", () => {
@@ -202,5 +212,55 @@ describe("isShareRpcMissing", () => {
     expect(isShareRpcMissing({ code: "42501", message: "permission denied" })).toBe(false);
     expect(isShareRpcMissing({ code: "XX000", message: "connection failed" })).toBe(false);
     expect(isShareRpcMissing(null)).toBe(false);
+  });
+});
+
+describe("sortInvoices", () => {
+  const invoices = [
+    summary({
+      id: "a",
+      total: 300,
+      createdAt: "2026-09-01T09:00:00Z",
+      updatedAt: "2026-09-05T09:00:00Z",
+    }),
+    summary({
+      id: "b",
+      total: 100,
+      createdAt: "2026-10-01T09:00:00Z",
+      updatedAt: "2026-10-02T09:00:00Z",
+    }),
+    summary({
+      id: "c",
+      total: 200,
+      createdAt: "2026-08-01T09:00:00Z",
+      updatedAt: "2026-10-03T09:00:00Z",
+    }),
+  ];
+
+  it("orders every supported way without mutating the input", () => {
+    expect(sortInvoices(invoices, "updated").map((i) => i.id)).toEqual(["c", "b", "a"]);
+    expect(sortInvoices(invoices, "newest").map((i) => i.id)).toEqual(["b", "a", "c"]);
+    expect(sortInvoices(invoices, "oldest").map((i) => i.id)).toEqual(["c", "a", "b"]);
+    expect(sortInvoices(invoices, "highest").map((i) => i.id)).toEqual(["a", "c", "b"]);
+    expect(sortInvoices(invoices, "lowest").map((i) => i.id)).toEqual(["b", "c", "a"]);
+    expect(invoices.map((i) => i.id)).toEqual(["a", "b", "c"]);
+  });
+
+  it("accepts only known sort ids", () => {
+    expect(isInvoiceSort("highest")).toBe(true);
+    expect(isInvoiceSort("random")).toBe(false);
+    expect(isInvoiceSort(null)).toBe(false);
+  });
+});
+
+describe("partitionArchived", () => {
+  it("splits the working view from the recoverable archive", () => {
+    const { active, archived } = partitionArchived([
+      summary({ id: "1" }),
+      summary({ id: "2", archived: true }),
+      summary({ id: "3", archived: true }),
+    ]);
+    expect(active.map((i) => i.id)).toEqual(["1"]);
+    expect(archived.map((i) => i.id)).toEqual(["2", "3"]);
   });
 });

@@ -21,6 +21,7 @@ type InvoiceSnapshot = {
   currency: string;
   total: number;
   client_name: string;
+  client_email: string;
   sender_name: string;
   issue_date: string | null;
   due_date: string | null;
@@ -41,6 +42,7 @@ function snapshot(data: Invoice, status: InvoiceStatus): InvoiceSnapshot {
     currency: (clean(data.currency) || "USD").toUpperCase().slice(0, 3),
     total: totals.total,
     client_name: clean(data.recipient?.name),
+    client_email: clean(data.recipient?.email).toLowerCase(),
     sender_name: clean(data.sender?.name),
     issue_date: date(data.issueDate),
     due_date: date(data.dueDate),
@@ -105,11 +107,16 @@ export async function duplicateInvoice(id: string): Promise<string> {
     .eq("user_id", userId)
     .maybeSingle();
   if (readError || !source) throw new Error("That invoice couldn't be found.");
+  const copy = source.data as Invoice;
+  // A new invoice needs its own identity: same business/client/items, but a
+  // distinct number, draft status, fresh timestamps, and no sharing or history.
+  const copyNumber =
+    typeof copy.number === "string" && copy.number.trim() ? `${copy.number.trim()} (copy)` : "";
   const { data: row, error } = await supabase
     .from("invoices")
     .insert({
       user_id: userId,
-      ...snapshot(source.data as Invoice, "draft"),
+      ...snapshot({ ...copy, number: copyNumber }, "draft"),
     })
     .select("id")
     .single();
@@ -146,6 +153,68 @@ export async function setInvoiceStatus(id: string, status: InvoiceStatus): Promi
     .eq("user_id", userId);
   if (error) throw new Error("Could not update the status. Try again.");
   refresh();
+}
+
+/* ---------------------------------------------------------- Management (Phase 17) */
+
+function cleanIds(ids: string[]): string[] {
+  return [...new Set(ids)].filter((id) => typeof id === "string" && id.length > 0);
+}
+
+/** Archive one invoice: out of the working view, recoverable. Only the owner. */
+export async function setInvoiceArchived(id: string, archived: boolean): Promise<void> {
+  const count = await setInvoicesArchived([id], archived);
+  if (count === 0) throw new Error("That invoice couldn't be found.");
+}
+
+/**
+ * Archive or restore several invoices at once. Returns how many changed.
+ * Unknown or foreign ids are silently skipped — a user can only ever affect
+ * their own rows, and RLS enforces it again underneath.
+ */
+export async function setInvoicesArchived(ids: string[], archived: boolean): Promise<number> {
+  const targets = cleanIds(ids);
+  if (targets.length === 0) return 0;
+  const userId = await requireUserId(routes.dashboard);
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("invoices")
+    .update({ archived })
+    .eq("user_id", userId)
+    .in("id", targets)
+    .select("id");
+  if (error) throw new Error("Could not update those invoices. Try again.");
+  refresh();
+  return data?.length ?? 0;
+}
+
+/**
+ * Permanently delete several invoices at once. Returns how many were removed.
+ * The UI confirms first and names the count; there is no undo.
+ */
+export async function deleteInvoices(ids: string[]): Promise<number> {
+  const targets = cleanIds(ids);
+  if (targets.length === 0) return 0;
+  const userId = await requireUserId(routes.dashboard);
+  const supabase = await createClient();
+  // Shared links must die with their invoices.
+  const { data: shared } = await supabase
+    .from("invoices")
+    .select("share_token")
+    .eq("user_id", userId)
+    .in("id", targets);
+  const { data, error } = await supabase
+    .from("invoices")
+    .delete()
+    .eq("user_id", userId)
+    .in("id", targets)
+    .select("id");
+  if (error) throw new Error("Could not delete those invoices. Try again.");
+  refresh();
+  for (const row of shared ?? []) {
+    if (row && typeof row.share_token === "string") refreshShared(row.share_token);
+  }
+  return data?.length ?? 0;
 }
 
 /* ---------------------------------------------------------- Sharing (Phase 9) */

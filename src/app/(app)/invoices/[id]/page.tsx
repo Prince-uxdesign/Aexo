@@ -68,6 +68,7 @@ export default async function InvoiceDetailPage({ params }: PageProps<"/invoices
             Back to invoices
           </Link>
           <Badge tone={STATUS_TONES[invoice.status]}>{STATUS_LABELS[invoice.status]}</Badge>
+          {invoice.archived ? <Badge tone="neutral">Archived</Badge> : null}
         </div>
 
         <div className="flex min-w-0 flex-col gap-1">

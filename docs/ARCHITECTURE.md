@@ -78,7 +78,7 @@ app/
   (auth)/sign-in, sign-up, …      /sign-in …        authentication (built)
   auth/confirm/route.ts           /auth/confirm     email link handler (built)
   (app)/account                   /account          profile (built), protected
-  (app)/dashboard                 /dashboard        overview stats, drafts spotlight, search, filter, cards/table (built), protected
+  (app)/dashboard                 /dashboard        overview stats, drafts spotlight, search, filter, sort, archive view, bulk select, cards/table (built), protected
   (app)/invoices                  /invoices         redirects to /dashboard (built), protected
   (app)/invoices/[id]             /invoices/:id     detail view: status, facts, actions, document (built), protected
   (app)/invoices/[id]/edit       /invoices/:id/edit editor for a saved invoice (built), protected
@@ -146,6 +146,14 @@ Use `pointer-coarse:` for touch-specific sizing (it's how the small button keeps
   database failures throw to the share route's error state instead of
   masquerading as broken links. The public page adds loading/error states and
   a Print / Save PDF action that prints the document only.
+- Built (Phase 16): email invoices (`src/features/invoices/email.ts` pure
+  helpers, `email-actions.ts` Server Actions, `components/send-dialog.tsx`).
+  Sending goes through Resend's REST API (no SDK) and always includes the
+  secure share link — switched on automatically if off. No PDF attachment:
+  there is no server-side renderer, so the link is the access method.
+  Attempts are recorded append-only in `invoice_emails`
+  (`supabase/migrations/20261002170000_invoice_emails.sql`). Requires
+  `RESEND_API_KEY` (+ optional `EMAIL_FROM`) in `.env.local`.
 - Not yet: storage buckets, generated types.
 
 ## Invoice documents

@@ -3,10 +3,13 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
+  Archive,
+  ArchiveRestore,
   Check,
   ChevronDown,
   Copy,
   Eye,
+  Mail,
   MoreHorizontal,
   Pencil,
   Share2,
@@ -32,7 +35,13 @@ import {
   type InvoiceStatus,
   type SavedInvoiceSummary,
 } from "@/features/invoices/model";
-import { deleteInvoice, duplicateInvoice, setInvoiceStatus } from "@/features/invoices/actions";
+import {
+  deleteInvoice,
+  duplicateInvoice,
+  setInvoiceArchived,
+  setInvoiceStatus,
+} from "@/features/invoices/actions";
+import { SendDialog } from "@/features/invoices/components/send-dialog";
 import { ShareDialog } from "@/features/invoices/components/share-dialog";
 
 const icon = { size: iconSize.md, strokeWidth: iconStroke };
@@ -127,6 +136,7 @@ export function InvoiceMenu({ invoice }: { invoice: SavedInvoiceSummary }) {
   const { pending, run } = useAction();
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  const [sendOpen, setSendOpen] = useState(false);
   const [deleting, startDelete] = useTransition();
   const { toast } = useToast();
 
@@ -186,6 +196,20 @@ export function InvoiceMenu({ invoice }: { invoice: SavedInvoiceSummary }) {
         >
           Share invoice
         </MenuItem>
+        <MenuItem icon={<Mail {...icon} />} disabled={pending} onSelect={() => setSendOpen(true)}>
+          Send invoice
+        </MenuItem>
+        <MenuItem
+          icon={invoice.archived ? <ArchiveRestore {...icon} /> : <Archive {...icon} />}
+          disabled={pending}
+          onSelect={() =>
+            run(() => setInvoiceArchived(invoice.id, !invoice.archived), {
+              ok: invoice.archived ? "Invoice restored to your list." : "Invoice archived.",
+            })
+          }
+        >
+          {invoice.archived ? "Restore" : "Archive"}
+        </MenuItem>
         <MenuItem icon={<Trash2 {...icon} />} destructive onSelect={() => setConfirmOpen(true)}>
           Delete
         </MenuItem>
@@ -196,6 +220,13 @@ export function InvoiceMenu({ invoice }: { invoice: SavedInvoiceSummary }) {
         number={invoice.number}
         open={shareOpen}
         onClose={() => setShareOpen(false)}
+      />
+
+      <SendDialog
+        invoiceId={invoice.id}
+        number={invoice.number}
+        open={sendOpen}
+        onClose={() => setSendOpen(false)}
       />
 
       <Dialog

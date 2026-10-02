@@ -39,9 +39,11 @@ export type SavedInvoiceSummary = {
   currency: string;
   total: number;
   clientName: string;
+  clientEmail: string;
   senderName: string;
   issueDate: string | null;
   dueDate: string | null;
+  archived: boolean;
   updatedAt: string;
   createdAt: string;
 };
@@ -57,9 +59,11 @@ type InvoiceRow = {
   currency: unknown;
   total: unknown;
   client_name: unknown;
+  client_email?: unknown;
   sender_name: unknown;
   issue_date: unknown;
   due_date: unknown;
+  archived?: unknown;
   updated_at: unknown;
   created_at: unknown;
   data?: unknown;
@@ -84,9 +88,11 @@ export function rowToSummary(row: InvoiceRow): SavedInvoiceSummary {
     currency: text(row.currency, "USD").toUpperCase() || "USD",
     total: toTotal(row.total),
     clientName: text(row.client_name),
+    clientEmail: text(row.client_email),
     senderName: text(row.sender_name),
     issueDate: toDate(row.issue_date),
     dueDate: toDate(row.due_date),
+    archived: row.archived === true,
     updatedAt: text(row.updated_at),
     createdAt: text(row.created_at),
   };
@@ -126,12 +132,12 @@ export function selectAttentionDrafts(
   return invoices.filter((invoice) => invoice.status === "draft").slice(0, limit);
 }
 
-/** Matches invoice number, client name or business (sender) name. */
+/** Matches invoice number, client name, client email or business (sender) name. */
 export function matchesQuery(invoice: SavedInvoiceSummary, query: string): boolean {
   const q = query.trim().toLowerCase();
   if (!q) return true;
-  return [invoice.number, invoice.clientName, invoice.senderName].some((field) =>
-    field.toLowerCase().includes(q),
+  return [invoice.number, invoice.clientName, invoice.clientEmail, invoice.senderName].some(
+    (field) => field.toLowerCase().includes(q),
   );
 }
 
@@ -153,6 +159,58 @@ export function statusCounts(invoices: SavedInvoiceSummary[]): Record<InvoiceSta
   };
   for (const invoice of invoices) counts[invoice.status] += 1;
   return counts;
+}
+
+/* ---------------------------------------------------------- Management (Phase 17) */
+
+export const INVOICE_SORTS = ["updated", "newest", "oldest", "highest", "lowest"] as const;
+
+export type InvoiceSort = (typeof INVOICE_SORTS)[number];
+
+export const SORT_OPTIONS: { id: InvoiceSort; label: string }[] = [
+  { id: "updated", label: "Recently updated" },
+  { id: "newest", label: "Newest" },
+  { id: "oldest", label: "Oldest" },
+  { id: "highest", label: "Highest amount" },
+  { id: "lowest", label: "Lowest amount" },
+];
+
+export function isInvoiceSort(value: unknown): value is InvoiceSort {
+  return typeof value === "string" && (INVOICE_SORTS as readonly string[]).includes(value);
+}
+
+const byUpdatedDesc = (a: SavedInvoiceSummary, b: SavedInvoiceSummary) =>
+  b.updatedAt.localeCompare(a.updatedAt) || b.createdAt.localeCompare(a.createdAt);
+
+/** Client-side ordering over the recent invoices the server provided. */
+export function sortInvoices(
+  invoices: SavedInvoiceSummary[],
+  sort: InvoiceSort,
+): SavedInvoiceSummary[] {
+  const next = [...invoices];
+  switch (sort) {
+    case "newest":
+      return next.sort((a, b) => b.createdAt.localeCompare(a.createdAt) || byUpdatedDesc(a, b));
+    case "oldest":
+      return next.sort((a, b) => a.createdAt.localeCompare(b.createdAt) || byUpdatedDesc(a, b));
+    case "highest":
+      return next.sort((a, b) => b.total - a.total || byUpdatedDesc(a, b));
+    case "lowest":
+      return next.sort((a, b) => a.total - b.total || byUpdatedDesc(a, b));
+    case "updated":
+      return next.sort(byUpdatedDesc);
+  }
+}
+
+/** Split the working view from the recoverable archive. */
+export function partitionArchived(invoices: SavedInvoiceSummary[]): {
+  active: SavedInvoiceSummary[];
+  archived: SavedInvoiceSummary[];
+} {
+  const active: SavedInvoiceSummary[] = [];
+  const archived: SavedInvoiceSummary[] = [];
+  for (const invoice of invoices) (invoice.archived ? archived : active).push(invoice);
+  return { active, archived };
 }
 
 /* ---------------------------------------------------------- Sharing (Phase 9) */

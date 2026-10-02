@@ -33,3 +33,23 @@ export function getSupabaseConfig() {
 export function isSupabaseConfigured() {
   return Boolean(publicEnv.supabaseUrl && publicEnv.supabasePublishableKey);
 }
+
+/**
+ * Outgoing email (Phase 16, Resend REST API — no SDK needed). Server-only:
+ * never import this from a Client Component. Missing keys fail only when an
+ * invoice is actually sent, with a message that says how to fix it.
+ */
+export function getEmailConfig() {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    throw new Error(
+      "Email sending isn't set up yet. Add RESEND_API_KEY (and EMAIL_FROM) " +
+        "to .env.local — see .env.example.",
+    );
+  }
+  return {
+    apiKey,
+    // Resend's sandbox sender works without a verified domain (test mode only).
+    from: process.env.EMAIL_FROM ?? "Aexo <onboarding@resend.dev>",
+  };
+}

@@ -3,16 +3,18 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Copy, Download, Pencil, Printer, Share2, Trash2 } from "lucide-react";
+import { Copy, Download, Mail, Pencil, Printer, Share2, Trash2 } from "lucide-react";
 import { Button, Dialog, buttonStyles, iconSize, iconStroke, useToast } from "@/components/ui";
 import { routes } from "@/config/routes";
 import { deleteInvoice, duplicateInvoice } from "@/features/invoices/actions";
+import { SendDialog } from "@/features/invoices/components/send-dialog";
 import { ShareDialog } from "@/features/invoices/components/share-dialog";
 
 /**
  * Detail page actions. Phones get full-width stacked buttons; larger screens
  * get a wrapping row. Edit is a plain link; the rest run through transitions
- * with human feedback. Delete confirms first. Print and Download PDF open the
+ * with human feedback. Delete confirms first. Send opens the email composer
+ * (secure link included automatically). Print and Download PDF open the
  * print-optimized view of this same invoice in a new tab, where the browser
  * dialog chooses the destination.
  */
@@ -20,6 +22,7 @@ export function DetailActions({ id, number }: { id: string; number: string }) {
   const router = useRouter();
   const { toast } = useToast();
   const [shareOpen, setShareOpen] = useState(false);
+  const [sendOpen, setSendOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [working, startWork] = useTransition();
   const icon = { size: iconSize.md, strokeWidth: iconStroke };
@@ -74,6 +77,13 @@ export function DetailActions({ id, number }: { id: string; number: string }) {
         </Button>
         <Button
           variant="secondary"
+          onClick={() => setSendOpen(true)}
+          leadingIcon={<Mail {...icon} />}
+        >
+          Send invoice
+        </Button>
+        <Button
+          variant="secondary"
           onClick={handleDuplicate}
           loading={working}
           leadingIcon={<Copy {...icon} />}
@@ -104,6 +114,13 @@ export function DetailActions({ id, number }: { id: string; number: string }) {
         number={number}
         open={shareOpen}
         onClose={() => setShareOpen(false)}
+      />
+
+      <SendDialog
+        invoiceId={id}
+        number={number}
+        open={sendOpen}
+        onClose={() => setSendOpen(false)}
       />
 
       <Dialog

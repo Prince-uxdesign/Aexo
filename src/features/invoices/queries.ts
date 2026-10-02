@@ -36,7 +36,7 @@ export const listInvoices = cache(async (): Promise<SavedInvoiceSummary[]> => {
   const { data, error } = await supabase
     .from("invoices")
     .select(
-      "id, number, status, currency, total, client_name, sender_name, issue_date, due_date, updated_at, created_at",
+      "id, number, status, currency, total, client_name, client_email, sender_name, issue_date, due_date, archived, updated_at, created_at",
     )
     .eq("user_id", userId)
     .order("updated_at", { ascending: false })
