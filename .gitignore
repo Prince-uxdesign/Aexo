@@ -43,3 +43,7 @@ next-env.d.ts
 
 # supabase CLI local cache (project ref, org id) - never commit
 supabase/.temp/
+
+# local tooling
+.claude/
+
