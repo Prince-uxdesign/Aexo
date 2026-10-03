@@ -10,6 +10,9 @@ const twMerge = extendTailwindMerge({
   extend: {
     theme: {
       text: [
+        "hero",
+        "section",
+        "card",
         "display",
         "h1",
         "h2",
@@ -27,8 +30,8 @@ const twMerge = extendTailwindMerge({
         "doc-xl",
         "doc-2xl",
       ],
-      radius: ["xs", "sm", "md", "lg", "xl", "pill"],
-      shadow: ["control", "elevated", "focus", "focus-error"],
+      radius: ["xs", "sm", "md", "lg", "xl", "2xl", "3xl", "pill"],
+      shadow: ["control", "elevated", "focus", "focus-error", "soft", "float", "lift"],
       spacing: ["gutter", "section", "card", "header"],
       breakpoint: ["3xl"],
       container: ["page", "reading"],

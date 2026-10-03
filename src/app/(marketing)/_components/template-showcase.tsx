@@ -1,70 +1,70 @@
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import { ChevronRight, LayoutTemplate } from "lucide-react";
 import { Container } from "@/components/layout/container";
-import { iconSize, iconStroke } from "@/components/ui";
+import { iconSize } from "@/components/ui";
 import { routes } from "@/config/routes";
 import { InvoiceDocument } from "@/features/invoice/components/invoice-document";
 import { sampleInvoice } from "@/features/invoice/model/sample";
 import { templates } from "@/features/invoice/templates";
-import { SectionHeading } from "./section-heading";
+import { cn } from "@/lib/utils/cn";
+import { revealDelay } from "./motion";
+import { InlineTile, SectionHeading, sectionClass } from "./section-heading";
 
-/**
- * The four templates, each rendering the same sample invoice.
- * - Phones: a horizontal, snapping showcase. Cards are ~80% of the screen so
- *   each preview is large enough to read its style, and the next card peeks in.
- * - 768–1279px: a 2 × 2 grid.
- * - From 1280px: four columns.
- * Previews show the top of the page (header, parties, items), where templates
- * differ most.
- */
+/** The four real templates, rendered with the same sample data. */
 export function TemplateShowcase() {
   return (
     <section
       id="templates"
       aria-labelledby="templates-title"
-      className="scroll-mt-header border-y border-border bg-surface-alt py-section"
+      className={cn(sectionClass, "pt-0 md:pt-0 lg:pt-0")}
     >
-      <Container className="flex flex-col gap-10 md:gap-14">
+      <Container>
         <SectionHeading
           id="templates-title"
-          eyebrow="Templates"
-          title="Four templates. One set of details."
-          description="Every template uses the same information, so you can switch at any time without retyping a thing."
+          title={
+            <>
+              Four <InlineTile icon={LayoutTemplate} /> templates.
+              <br className="max-sm:hidden" /> One set of details.
+            </>
+          }
+          description="Every template uses the same invoice, so you can switch the look without retyping anything."
         />
 
+        {/* Swipeable row on phones, grid from 768px. */}
         <ul
           aria-label="Invoice templates"
-          // Keyboard users can scroll the row on phones; it's a normal grid from 768px.
-          tabIndex={0}
-          className="-mx-gutter flex snap-x snap-mandatory scroll-px-gutter gap-4 overflow-x-auto px-gutter pb-2 md:mx-0 md:grid md:snap-none md:grid-cols-2 md:gap-6 md:overflow-visible md:px-0 md:pb-0 xl:grid-cols-4"
+          className="-mx-gutter mt-14 flex snap-x snap-mandatory scroll-px-gutter gap-4 overflow-x-auto px-gutter pb-4 md:mx-0 md:mt-20 md:grid md:grid-cols-2 md:overflow-visible md:px-0 md:pb-0 xl:grid-cols-4 xl:gap-6"
         >
-          {templates.map((template) => (
+          {/* Each card tips up towards the viewer, one after another. */}
+          {templates.map((template, i) => (
             <li
               key={template.id}
+              data-reveal="tilt"
+              style={revealDelay(i * 130)}
               className="w-[80%] max-w-80 shrink-0 snap-start md:w-auto md:max-w-none"
             >
               <Link
                 href={routes.createInvoiceWith(template.id)}
-                className="group flex h-full flex-col overflow-hidden rounded-lg border border-border bg-surface transition-[border-color,translate] duration-200 ease-standard hover:-translate-y-0.5 hover:border-border-strong motion-reduce:hover:translate-y-0"
+                className="group flex h-full flex-col overflow-hidden rounded-2xl bg-mist"
               >
-                <div className="border-b border-border bg-canvas p-4 sm:p-5">
+                <div className="px-6 pt-6 sm:px-8 sm:pt-8">
                   <InvoiceDocument
                     invoice={sampleInvoice}
                     template={template.id}
-                    aspect="600 / 560"
+                    aspect="600 / 640"
                     label={`${template.name} template preview`}
-                    className="shadow-control"
+                    className="rounded-b-none shadow-float transition-transform duration-200 ease-standard group-hover:-translate-y-1"
                   />
                 </div>
-                <div className="flex flex-1 flex-col gap-2 p-5">
+                <div className="relative flex flex-1 flex-col p-6">
                   <h3 className="text-h3 text-ink">{template.name}</h3>
-                  <p className="text-body text-muted">{template.description}</p>
-                  <span className="mt-auto flex items-center gap-1.5 pt-3 text-label text-ink">
+                  <p className="mt-1.5 text-body text-muted">{template.description}</p>
+                  <span className="mt-auto inline-flex items-center gap-1 pt-5 text-button text-ink">
                     Use {template.name}
-                    <ArrowRight
+                    <ChevronRight
                       size={iconSize.sm}
-                      strokeWidth={iconStroke}
-                      className="transition-transform duration-200 ease-standard group-hover:translate-x-0.5"
+                      strokeWidth={2}
+                      className="transition-transform duration-150 ease-standard group-hover:translate-x-0.5"
                     />
                   </span>
                 </div>

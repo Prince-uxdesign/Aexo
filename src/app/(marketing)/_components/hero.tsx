@@ -1,88 +1,110 @@
 import Link from "next/link";
-import { Container } from "@/components/layout/container";
 import { buttonStyles } from "@/components/ui";
 import { routes } from "@/config/routes";
-import { HeroPreview } from "./hero-preview";
+import { HeroEnvelope } from "./hero-envelope";
+import { enterDelay, scrollOffsets } from "./motion";
+import { SiteHeader } from "./site-header";
 
-const outputs = ["PDF", "Print", "Share link", "Email"];
+// Faint "stars" in the sky. Fixed positions (percent of the island) so the
+// server and client render the same thing.
+const stars = [
+  [6, 22, 1],
+  [14, 48, 0.5],
+  [21, 31, 0.5],
+  [27, 64, 1],
+  [33, 18, 0.5],
+  [41, 52, 0.5],
+  [58, 14, 1],
+  [63, 41, 0.5],
+  [71, 26, 0.5],
+  [79, 58, 1],
+  [86, 19, 0.5],
+  [92, 44, 0.5],
+  [11, 72, 0.5],
+  [88, 70, 0.5],
+] as const;
 
-/**
- * Hero (guide §15).
- * - Phones: H1-sized headline (2 lines), one full-width action, preview below
- *   and already in view on a 375px screen.
- * - From 640px: display headline and both actions; preview below.
- * - 768–1279px (tablets): text centred over the centred preview, so wide
- *   tablets don't leave an empty right half.
- * - Up to 1279px: stacked, so the preview can be large.
- * - From 1280px: text and preview side by side, 6 / 6 columns.
- */
 export function Hero() {
   return (
-    <section aria-labelledby="hero-title" className="pt-8 pb-section sm:pt-14 xl:pt-20">
-      <Container className="grid gap-10 sm:gap-12 md:gap-14 xl:grid-cols-12 xl:items-center xl:gap-12 2xl:gap-16">
-        <div className="flex max-w-2xl flex-col gap-6 md:mx-auto md:items-center md:text-center xl:col-span-6 xl:mx-0 xl:max-w-none xl:items-start xl:text-left">
-          <p
-            className="flex animate-fade-up items-center gap-2 text-label text-muted"
-            style={{ animationDelay: "0ms" }}
-          >
-            <span aria-hidden className="size-1.5 rounded-pill bg-accent" />
-            No account needed to start
-          </p>
-          <h1
-            id="hero-title"
-            className="animate-fade-up text-h1 text-ink sm:text-display"
-            style={{ animationDelay: "40ms" }}
-          >
-            Create professional invoices in minutes.
+    <section aria-labelledby="hero-title" className="p-2 sm:p-3">
+      <div
+        data-scene="exit"
+        className="relative isolate overflow-hidden rounded-xl bg-linear-to-b from-sky-600 from-30% via-sky-400 via-75% to-sky-200 sm:rounded-3xl"
+      >
+        {/* Stars twinkle out of step and drift up a little slower than the page. */}
+        <div
+          aria-hidden
+          className="scroll-shift pointer-events-none absolute inset-0 -z-10"
+          style={scrollOffsets({ y: 120 })}
+        >
+          {stars.map(([left, top, size], i) => (
+            <span
+              key={`${left}-${top}`}
+              className={
+                size === 1
+                  ? "absolute size-1 animate-twinkle rounded-pill bg-white/70"
+                  : "absolute size-0.5 animate-twinkle rounded-pill bg-white/60"
+              }
+              style={{ left: `${left}%`, top: `${top}%`, animationDelay: `${(i * 0.7) % 4}s` }}
+            />
+          ))}
+        </div>
+
+        <SiteHeader />
+
+        {/* Load: each word rises out of a blur, then the copy and buttons follow.
+            Scroll: the whole block drifts down, shrinks a touch and fades. */}
+        <div
+          className="scroll-shift scroll-fade px-gutter pt-12 text-center sm:pt-16 lg:pt-20"
+          style={scrollOffsets({ y: 180, s: -0.06 })}
+        >
+          <h1 id="hero-title" className="text-hero text-white">
+            <span className="inline-block animate-rise-in" style={enterDelay(80)}>
+              Invoices,
+            </span>
+            <br className="sm:hidden" />{" "}
+            <span className="inline-block animate-rise-in" style={enterDelay(200)}>
+              not
+            </span>
+            <br className="max-sm:hidden" />{" "}
+            <span className="inline-block animate-rise-in" style={enterDelay(320)}>
+              paperwork
+            </span>
           </h1>
           <p
-            className="animate-fade-up text-body-lg text-muted md:max-w-xl"
-            style={{ animationDelay: "80ms" }}
+            className="mx-auto mt-6 max-w-lg animate-rise-in text-body-lg text-balance text-white md:mt-8"
+            style={enterDelay(480)}
           >
-            Add your details and your client&apos;s, customise the template and watch the invoice
-            update as you type. Then download, print or send it.
+            Make invoices that <strong className="font-medium text-white">look like you</strong>.
+            Enjoy <strong className="font-medium text-white">four polished templates</strong> and
+            totals that always add up.{" "}
+            <strong className="font-medium text-white">Send it in minutes</strong>, not hours.
           </p>
 
           <div
-            className="mt-2 flex animate-fade-up flex-col gap-3 sm:flex-row sm:flex-wrap md:justify-center xl:justify-start"
-            style={{ animationDelay: "120ms" }}
+            className="mt-8 flex animate-rise-in flex-col items-center justify-center gap-3 sm:flex-row md:mt-10"
+            style={enterDelay(620)}
           >
-            <Link href={routes.createInvoice} className={buttonStyles({ size: "lg" })}>
-              Create an Invoice
+            <Link
+              href={routes.createInvoice}
+              className={buttonStyles({ size: "lg", className: "w-full shadow-float sm:w-auto" })}
+            >
+              Create an invoice for free
             </Link>
             <Link
               href={routes.landing.templates}
-              className={buttonStyles({
-                variant: "secondary",
-                size: "lg",
-                // Phones get one clear action; Templates is the next section and in the menu.
-                className: "hidden sm:inline-flex",
-              })}
+              className="inline-flex min-h-12 w-full items-center justify-center rounded-pill bg-white px-6 text-button text-ink shadow-soft transition-[translate,opacity] duration-150 ease-standard hover:-translate-y-px hover:opacity-92 sm:w-auto"
             >
-              View Templates
+              See the templates
             </Link>
           </div>
-
-          <ul
-            aria-label="What you can do with your invoice"
-            className="flex animate-fade-up flex-wrap gap-x-4 gap-y-1 text-caption text-muted md:justify-center xl:justify-start"
-            style={{ animationDelay: "160ms" }}
-          >
-            {outputs.map((output, index) => (
-              <li key={output} className="flex items-center gap-4">
-                {index > 0 ? (
-                  <span aria-hidden className="size-1 rounded-pill bg-border-strong" />
-                ) : null}
-                {output}
-              </li>
-            ))}
-          </ul>
+          <p className="mt-4 animate-rise-in text-caption text-white" style={enterDelay(740)}>
+            No account needed to start.
+          </p>
         </div>
 
-        <div className="animate-fade-up xl:col-span-6" style={{ animationDelay: "120ms" }}>
-          <HeroPreview />
-        </div>
-      </Container>
+        <HeroEnvelope />
+      </div>
     </section>
   );
 }

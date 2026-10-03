@@ -11,6 +11,8 @@ export const routes = {
     howItWorks: "/#how-it-works",
     templates: "/#templates",
     features: "/#features",
+    security: "/#security",
+    pricing: "/#pricing",
   },
 
   // Public: invoice creation works without an account (§16).
@@ -33,7 +35,6 @@ export const routes = {
   invoice: (id: string) => `/invoices/${encodeURIComponent(id)}`,
   invoiceEdit: (id: string) => `/invoices/${encodeURIComponent(id)}/edit`,
   invoicePrint: (id: string) => `/invoices/${encodeURIComponent(id)}/print`,
-  templates: "/templates",
 
   // Development only
   foundation: "/foundation",
