@@ -26,6 +26,12 @@ describe("validateLogoFile", () => {
     expect(validateLogoFile({ type: "image/png", size: LOGO_MAX_INPUT_BYTES + 1 })).toMatch(/8 MB/);
     expect(validateLogoFile({ type: "image/png", size: LOGO_MAX_INPUT_BYTES })).toBeNull();
   });
+
+  it("rejects mismatched extensions while allowing extensionless names", () => {
+    expect(validateLogoFile({ type: "image/png", size: 10_000, name: "logo.exe" })).not.toBeNull();
+    expect(validateLogoFile({ type: "image/png", size: 10_000, name: "logo.png" })).toBeNull();
+    expect(validateLogoFile({ type: "image/png", size: 10_000, name: "logo" })).toBeNull();
+  });
 });
 
 describe("logo budgets", () => {

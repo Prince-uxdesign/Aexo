@@ -41,7 +41,11 @@ export default async function SharedInvoicePage({ params }: PageProps<"/i/[share
   const invoice = shared.data;
   const { total } = computeTotals(invoice);
   const sender = invoice.sender.name || "A business";
-  const email = invoice.sender.email?.trim() || "";
+  // Only link when the stored address is a plausible email: the value is
+  // owner-entered data rendered on a public page, so a malformed value must
+  // never become a malformed mailto: URL.
+  const rawEmail = invoice.sender.email?.trim() || "";
+  const email = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(rawEmail) ? rawEmail : "";
   const facts = [
     {
       label: "Amount due",
@@ -56,7 +60,7 @@ export default async function SharedInvoicePage({ params }: PageProps<"/i/[share
   ];
 
   return (
-    <main id="main" className="print:bg-white flex-1 py-6 md:py-10 print:py-0">
+    <main id="main" className="flex-1 py-6 md:py-10 print:bg-white print:py-0">
       <Container className="flex max-w-3xl flex-col gap-5 md:gap-6 print:max-w-none print:px-0">
         <section
           aria-labelledby="shared-heading"

@@ -65,8 +65,10 @@ export function ShareDialog({ invoiceId, number, open, onClose }: ShareDialogPro
 
   useEffect(() => {
     if (!open) return;
+    let active = true;
     fetchShareState(invoiceId).then(
       (state) => {
+        if (!active) return;
         if (!state || !state.token) {
           // Missing columns (old database) or a foreign row: sharing unavailable.
           setLoadError(true);
@@ -77,10 +79,14 @@ export function ShareDialog({ invoiceId, number, open, onClose }: ShareDialogPro
         setLoading(false);
       },
       () => {
+        if (!active) return;
         setLoadError(true);
         setLoading(false);
       },
     );
+    return () => {
+      active = false;
+    };
   }, [open, invoiceId]);
 
   useEffect(

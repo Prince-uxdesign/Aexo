@@ -28,22 +28,115 @@ type InvoiceSnapshot = {
   data: Invoice;
 };
 
-function snapshot(data: Invoice, status: InvoiceStatus): InvoiceSnapshot {
-  if (!data || typeof data !== "object" || !Array.isArray(data.items)) {
+/* ------------------------------------------------ Server-side save guards
+ * The form validates client-side, but Server Actions are the trust boundary:
+ * anyone can call them directly. These caps keep one bad save from bloating
+ * the database row, breaking the dashboard list, or breaking PDF/share
+ * rendering. Lengths mirror the form's expectations; the calculation engine
+ * (`computeTotals`) stays the single source for all money maths. */
+
+const MAX_NUMBER_LENGTH = 64;
+const MAX_NAME_LENGTH = 200;
+const MAX_EMAIL_LENGTH = 254;
+const MAX_TEXT_LENGTH = 5000;
+const MAX_ITEMS = 100;
+const MAX_ITEM_NAME_LENGTH = 200;
+const MAX_ITEM_DESC_LENGTH = 1000;
+/** ~512 KB image payload as a data URL (≈682 KB of base64 text). */
+const MAX_LOGO_SRC_LENGTH = 700_000;
+
+function clip(value: unknown, max: number): string {
+  return typeof value === "string" ? value.trim().slice(0, max) : "";
+}
+
+/** Finite numbers only: NaN/Infinity become 0 (JSON would store them as null). */
+function num(value: unknown): number {
+  return typeof value === "number" && Number.isFinite(value) ? value : 0;
+}
+
+/**
+ * Normalize the invoice document before storage so every reader (editor,
+ * preview, dashboard, detail, PDF/print, share page, email) sees safe values.
+ * Invalid numbers become 0 and the totals engine clamps them from there;
+ * oversized text is truncated; oversized payloads are rejected with a human
+ * message instead of silently bloating the row.
+ */
+function sanitizeForSave(raw: Invoice): Invoice {
+  if (!raw || typeof raw !== "object" || !Array.isArray(raw.items)) {
     throw new Error("That invoice couldn't be saved. Try again.");
   }
+  if (raw.items.length > MAX_ITEMS) {
+    throw new Error(`Invoices hold up to ${MAX_ITEMS} items. Remove some and try again.`);
+  }
+  const logo = (raw as { logo?: unknown }).logo as
+    { src?: unknown; fileName?: unknown } | null | undefined;
+  if (logo && typeof logo === "object") {
+    const src = typeof logo.src === "string" ? logo.src : "";
+    if (src.length > MAX_LOGO_SRC_LENGTH) {
+      throw new Error("That logo is too large to save. Try a smaller image.");
+    }
+  }
+  const items = raw.items.slice(0, MAX_ITEMS).map((item) => ({
+    ...item,
+    name: clip(item.name, MAX_ITEM_NAME_LENGTH),
+    description:
+      typeof item.description === "string"
+        ? item.description.trim().slice(0, MAX_ITEM_DESC_LENGTH)
+        : item.description,
+    quantity: num(item.quantity),
+    unitPrice: num(item.unitPrice),
+  }));
+  const party = (value: unknown) => {
+    if (!value || typeof value !== "object") return {};
+    const p = value as Record<string, unknown>;
+    return {
+      ...p,
+      name: clip(p.name, MAX_NAME_LENGTH),
+      contactName:
+        typeof p.contactName === "string"
+          ? p.contactName.trim().slice(0, MAX_NAME_LENGTH)
+          : p.contactName,
+      email: clip(p.email, MAX_EMAIL_LENGTH),
+      phone: typeof p.phone === "string" ? p.phone.trim().slice(0, 64) : p.phone,
+      website: typeof p.website === "string" ? p.website.trim().slice(0, 254) : p.website,
+      taxId: typeof p.taxId === "string" ? p.taxId.trim().slice(0, 64) : p.taxId,
+    };
+  };
+  return {
+    ...raw,
+    number: clip(raw.number, MAX_NUMBER_LENGTH),
+    currency:
+      typeof raw.currency === "string" && /^[A-Za-z]{3}$/.test(raw.currency.trim())
+        ? raw.currency.trim().toUpperCase()
+        : "USD",
+    sender: party(raw.sender),
+    recipient: party(raw.recipient),
+    items,
+    discount:
+      raw.discount && typeof raw.discount === "object"
+        ? { ...raw.discount, value: num(raw.discount.value) }
+        : raw.discount,
+    taxRate: raw.taxRate === undefined ? raw.taxRate : num(raw.taxRate),
+    notes: typeof raw.notes === "string" ? raw.notes.slice(0, MAX_TEXT_LENGTH) : raw.notes,
+  } as Invoice;
+}
+
+function snapshot(input: Invoice, status: InvoiceStatus): InvoiceSnapshot {
+  const data = sanitizeForSave(input);
   const totals = computeTotals(data);
   const clean = (value: unknown) => (typeof value === "string" ? value.trim() : "");
   const date = (value: unknown) =>
     typeof value === "string" && /^\d{4}-\d{2}-\d{2}/.test(value) ? value.slice(0, 10) : null;
   return {
-    number: clean(data.number),
+    number: clean(data.number).slice(0, MAX_NUMBER_LENGTH),
     status,
-    currency: (clean(data.currency) || "USD").toUpperCase().slice(0, 3),
+    currency: /^[A-Z]{3}$/.test(clean(data.currency).toUpperCase())
+      ? clean(data.currency).toUpperCase()
+      : "USD",
     total: totals.total,
-    client_name: clean(data.recipient?.name),
-    client_email: clean(data.recipient?.email).toLowerCase(),
-    sender_name: clean(data.sender?.name),
+    client_name: clean(data.recipient?.name).slice(0, MAX_NAME_LENGTH),
+    client_email: clean(data.recipient?.email).toLowerCase().slice(0, MAX_EMAIL_LENGTH),
+    sender_name: clean(data.sender?.name).slice(0, MAX_NAME_LENGTH),
     issue_date: date(data.issueDate),
     due_date: date(data.dueDate),
     data,
@@ -157,8 +250,12 @@ export async function setInvoiceStatus(id: string, status: InvoiceStatus): Promi
 
 /* ---------------------------------------------------------- Management (Phase 17) */
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 function cleanIds(ids: string[]): string[] {
-  return [...new Set(ids)].filter((id) => typeof id === "string" && id.length > 0);
+  // Only plausible row ids reach the database: tampered values are skipped
+  // instead of causing uuid syntax errors, and foreign ids still match nothing.
+  return [...new Set(ids)].filter((id) => typeof id === "string" && UUID_PATTERN.test(id));
 }
 
 /** Archive one invoice: out of the working view, recoverable. Only the owner. */

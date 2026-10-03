@@ -189,7 +189,15 @@ export async function sendInvoiceEmail(
   const facts = emailFacts(row.data as Invoice);
   if (!facts) throw new Error("That invoice couldn't be found. It may have been deleted.");
 
-  const config = getEmailConfig();
+  let config: { apiKey: string; from: string };
+  try {
+    config = getEmailConfig();
+  } catch {
+    // Setup detail (env names) stays in the server log; the owner gets an
+    // actionable message without internals.
+    console.error("[email:config] email provider is not configured");
+    throw new Error("Email sending isn't available right now. Try again later.");
+  }
 
   // The email links to the secure page, so the link must be live. Sending an
   // email is an explicit sharing act: switch it on when it isn't already.

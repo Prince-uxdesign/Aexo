@@ -42,9 +42,22 @@ export function formatAcceptHint(): string {
  * Human-readable problem with a file, or null when it can be processed.
  * Takes a narrow shape (not File) so it runs in unit tests.
  */
-export function validateLogoFile(file: { type: string; size: number }): string | null {
+export function validateLogoFile(file: {
+  type: string;
+  size: number;
+  name?: string;
+}): string | null {
   if (!(LOGO_ACCEPTED_TYPES as readonly string[]).includes(file.type)) {
     return `Use a ${formatAcceptHint()} image.`;
+  }
+  // Defense in depth: the MIME type above is client-claimed, so cross-check
+  // the file extension when one is present. Extensionless names still pass —
+  // the decode step is the real check and rejects non-images.
+  if (typeof file.name === "string" && file.name.includes(".")) {
+    const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
+    if (!["png", "jpg", "jpeg", "webp", "svg"].includes(ext)) {
+      return `Use a ${formatAcceptHint()} image.`;
+    }
   }
   if (file.size <= 0) {
     return "That file looks empty. Try another image.";
