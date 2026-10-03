@@ -62,8 +62,9 @@ export function useSavedSession(store: InvoiceFormStore, saved: SavedEditing | u
     save: persist,
   });
 
-  const save = useCallback(async () => {
-    if (!target) return;
+  /** Resolves true once the record is saved. */
+  const save = useCallback(async (): Promise<boolean> => {
+    if (!target) return false;
     if (!store.actions.revealErrors()) {
       const count = Object.keys(store.getErrors()).length;
       toast({
@@ -75,7 +76,7 @@ export function useSavedSession(store: InvoiceFormStore, saved: SavedEditing | u
         tone: "error",
       });
       focusFirstError();
-      return;
+      return false;
     }
     setSaving(true);
     store.actions.setAutoSaveStatus("saving");
@@ -83,12 +84,14 @@ export function useSavedSession(store: InvoiceFormStore, saved: SavedEditing | u
       await persist();
       store.actions.setAutoSaveStatus("idle");
       toast({ title: "Invoice saved.", tone: "success" });
+      return true;
     } catch (error) {
       store.actions.setAutoSaveStatus("error");
       toast({
         title: error instanceof Error ? error.message : "Could not save your invoice. Try again.",
         tone: "error",
       });
+      return false;
     } finally {
       setSaving(false);
     }

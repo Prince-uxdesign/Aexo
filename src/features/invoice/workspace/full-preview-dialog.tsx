@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Save } from "lucide-react";
 import {
@@ -26,8 +26,10 @@ type FullPreviewDialogProps = {
   mode: PreviewMode | null;
   onClose: () => void;
   onFinish: () => void;
+  /** Keeps a draft on this device (creating a new invoice). */
   onSave: () => void;
-  saveLabel?: string;
+  /** Set when editing a saved invoice: finishing saves that record, never a new one. */
+  savedRecord?: { id: string; save: () => Promise<boolean>; saving: boolean };
 };
 
 /** A4 at 96 dpi: the size the page will print at. */
@@ -38,21 +40,21 @@ const ACTUAL_WIDTH = "w-[794px]";
  * On phones and tablets "Actual size" shows the page at print size and lets it
  * pan sideways inside the dialog, never the page behind it.
  *
- * In "finish" mode it is the last step. Download, print and send are not built
- * yet, and the dialog says so plainly instead of offering buttons that do nothing.
+ * In "finish" mode it is the last step. Print, PDF, email and share links live
+ * on the saved invoice's page, so finishing means saving: a new invoice goes to
+ * the account (or stays a device draft), an edited one saves and opens.
  */
 export function FullPreviewDialog({
   mode,
   onClose,
   onFinish,
   onSave,
-  saveLabel = "Save draft",
+  savedRecord,
 }: FullPreviewDialogProps) {
   const invoice = usePreviewInvoice();
   const router = useRouter();
   const { toast } = useToast();
   const [zoom, setZoom] = useState<"fit" | "actual">("fit");
-  const comingSoonId = useId();
   const { name } = getTemplate(invoice.template);
   const finishing = mode === "finish";
   const icon = { size: iconSize.md, strokeWidth: iconStroke };
@@ -70,6 +72,11 @@ export function FullPreviewDialog({
     }
   };
 
+  const saveAndOpen = async () => {
+    if (!savedRecord) return;
+    if (await savedRecord.save()) router.push(routes.invoice(savedRecord.id));
+  };
+
   return (
     <Dialog
       open={mode !== null}
@@ -80,10 +87,23 @@ export function FullPreviewDialog({
       description={`${invoice.number} · ${name} template`}
       className="sm:max-h-[calc(100dvh-4rem)]"
       footer={
-        finishing ? (
+        finishing && savedRecord ? (
+          <>
+            <Button variant="secondary" onClick={onClose}>
+              Back to editing
+            </Button>
+            <Button
+              onClick={saveAndOpen}
+              loading={savedRecord.saving}
+              leadingIcon={<Save {...icon} />}
+            >
+              Save and open
+            </Button>
+          </>
+        ) : finishing ? (
           <>
             <Button variant="secondary" onClick={onSave} leadingIcon={<Save {...icon} />}>
-              {saveLabel}
+              Save draft
             </Button>
             <SaveInvoiceButton invoice={invoice} onSave={saveToAccount} />
           </>
@@ -99,12 +119,17 @@ export function FullPreviewDialog({
     >
       <div className="flex flex-col gap-4">
         {finishing ? (
-          <div id={comingSoonId}>
-            <FormMessage tone="info" title="Download, print and send are coming next">
-              Everything on your invoice is complete. Save it to your dashboard to keep it in your
-              account, or keep a draft on this device.
+          savedRecord ? (
+            <FormMessage tone="info" title="Everything on your invoice is complete">
+              Save your changes to print it, download a PDF, email it or share a link from the
+              invoice page.
             </FormMessage>
-          </div>
+          ) : (
+            <FormMessage tone="info" title="Everything on your invoice is complete">
+              Save it to your account to print it, download a PDF, email it or share a link. Or keep
+              a draft on this device.
+            </FormMessage>
+          )
         ) : null}
 
         <SegmentedControl

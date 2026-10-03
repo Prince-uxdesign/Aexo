@@ -6,13 +6,16 @@ account is for saving and managing invoices.
 
 ## One-time Supabase setup
 
-Project: `xoznedkbkcicdfcwwvdi`
+Use a Supabase project dedicated to Aexo. Don't share one with another app: the
+migrations create tables (such as `public.profiles`) that other apps may also define.
 
-1. **Keys.** In `.env.local` set `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (Project Settings →
-   API Keys → Publishable key, `sb_publishable_…`). The URL is already set. Never put the
-   secret/service-role key in a `NEXT_PUBLIC_` variable.
-2. **Database.** Run `supabase/migrations/20261002120000_profiles.sql` (SQL Editor → paste →
-   Run). It creates `public.profiles`, Row Level Security, and the sign-up trigger.
+1. **Keys.** In `.env.local` set `NEXT_PUBLIC_SUPABASE_URL` and
+   `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (Project Settings → API Keys → Publishable key,
+   `sb_publishable_…`). Never put the secret/service-role key in a `NEXT_PUBLIC_` variable.
+2. **Database.** Run every file in `supabase/migrations/` in filename order (SQL Editor →
+   paste → Run, or `supabase db push`). The first creates `public.profiles`, Row Level
+   Security and the sign-up trigger; the rest add invoices, sharing, email history and
+   archiving.
 3. **Redirect URLs.** Authentication → URL Configuration:
    - Site URL: your production URL (e.g. `https://aexo.app`).
    - Redirect URLs: add `http://localhost:3000/**` and `https://<your-domain>/**`.

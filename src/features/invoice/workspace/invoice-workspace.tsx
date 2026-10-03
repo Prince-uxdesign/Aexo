@@ -134,8 +134,8 @@ export function InvoiceWorkspace({
         mode={previewMode}
         onClose={() => setPreviewMode(null)}
         onFinish={finish}
-        onSave={saved ? saveRecord : save}
-        saveLabel={saved ? "Save changes" : undefined}
+        onSave={save}
+        savedRecord={saved ? { id: saved.id, save: saveRecord, saving } : undefined}
       />
     </InvoiceFormProvider>
   );

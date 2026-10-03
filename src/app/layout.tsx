@@ -29,7 +29,7 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={inter.variable}>
-      <body className="flex min-h-dvh flex-col bg-canvas text-foreground">
+      <body suppressHydrationWarning className="flex min-h-dvh flex-col bg-canvas text-foreground">
         {/* Every page renders <main id="main">, so keyboard users can skip repeated navigation. */}
         <a
           href="#main"

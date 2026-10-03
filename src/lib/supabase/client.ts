@@ -1,5 +1,6 @@
 import { createBrowserClient } from "@supabase/ssr";
 import { getSupabaseConfig } from "@/lib/env";
+import type { Database } from "./database.types";
 
 /**
  * Supabase client for Client Components (runs in the browser).
@@ -10,5 +11,5 @@ import { getSupabaseConfig } from "@/lib/env";
  */
 export function createClient() {
   const { url, publishableKey } = getSupabaseConfig();
-  return createBrowserClient(url, publishableKey);
+  return createBrowserClient<Database>(url, publishableKey);
 }
