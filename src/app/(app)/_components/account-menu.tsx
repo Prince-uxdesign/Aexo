@@ -26,7 +26,7 @@ export function AccountMenu({ name, email }: { name: string | null; email: strin
         <button
           type="button"
           aria-label={`Account menu for ${name || email}`}
-          className="flex size-11 items-center justify-center rounded-pill border border-border-strong bg-surface-alt text-label text-ink transition-colors duration-150 hover:bg-border"
+          className="flex size-11 items-center justify-center rounded-pill bg-linear-to-b from-sky-700 to-sky-600 text-label text-white shadow-soft ring-2 ring-white transition-[translate,box-shadow] duration-150 ease-standard hover:-translate-y-px hover:shadow-float"
         >
           {initials(name, email)}
         </button>

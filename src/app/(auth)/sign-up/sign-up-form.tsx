@@ -2,22 +2,27 @@
 
 import { useActionState, useRef, useState } from "react";
 import { MailCheck } from "lucide-react";
-import {
-  Button,
-  Field,
-  FormMessage,
-  Input,
-  PasswordInput,
-  iconSize,
-  iconStroke,
-} from "@/components/ui";
+import { Button, Field, FormMessage, iconSize, iconStroke } from "@/components/ui";
 import { routes } from "@/config/routes";
 import { resendConfirmation, signUp } from "@/lib/auth/actions";
 import { withNext } from "@/lib/auth/redirects";
 import { MIN_PASSWORD_LENGTH } from "@/lib/auth/validation";
+import { cn } from "@/lib/utils/cn";
 import {
+  AuthAlert,
+  AuthPasswordInput,
+  AuthProgress,
+  EmailInput,
+  NameInput,
+  PasswordStrength,
+  useSubmitCount,
+} from "../_components/auth-fields";
+import {
+  AuthBadge,
   AuthFooterLink,
   AuthHeading,
+  AuthTabs,
+  enter,
   initialFormState,
   useFocusFirstError,
 } from "../_components/auth-ui";
@@ -47,6 +52,11 @@ function SignUpFlow({
   const [state, action, pending] = useActionState(signUp, initialFormState);
   const formRef = useRef<HTMLFormElement>(null);
   useFocusFirstError(formRef, state);
+  const submits = useSubmitCount();
+  // Mirrors the password field for the strength meter. React resets the form
+  // after each submit, so the reset handler clears it too.
+  const [password, setPassword] = useState("");
+  const formMotion = enter(2);
 
   if (state.status === "success" && state.values?.email) {
     return <CheckEmail email={state.values.email} next={next} onRestart={onRestart} />;
@@ -54,6 +64,8 @@ function SignUpFlow({
 
   return (
     <>
+      <AuthProgress active={pending} />
+      <AuthTabs current="sign-up" next={next} />
       <AuthHeading
         title="Create your account"
         description={
@@ -63,8 +75,18 @@ function SignUpFlow({
         }
       />
 
-      <form ref={formRef} action={action} noValidate className="flex flex-col gap-5">
-        {state.message ? <FormMessage>{state.message}</FormMessage> : null}
+      <form
+        ref={formRef}
+        action={action}
+        onSubmit={submits.onSubmit}
+        onReset={() => setPassword("")}
+        noValidate
+        data-auth-form
+        aria-busy={pending || undefined}
+        className={cn("flex flex-col gap-5", formMotion.className)}
+        style={formMotion.style}
+      >
+        {state.message ? <AuthAlert attempt={submits.count}>{state.message}</AuthAlert> : null}
         <input type="hidden" name="next" value={next} />
 
         <Field
@@ -72,19 +94,11 @@ function SignUpFlow({
           hint="Optional. How we greet you in Aexo."
           error={state.fieldErrors?.fullName}
         >
-          <Input name="fullName" autoComplete="name" defaultValue={state.values?.fullName} />
+          <NameInput name="fullName" defaultValue={state.values?.fullName} />
         </Field>
 
         <Field label="Email" required error={state.fieldErrors?.email}>
-          <Input
-            name="email"
-            type="email"
-            inputMode="email"
-            autoComplete="email"
-            autoCapitalize="none"
-            spellCheck={false}
-            defaultValue={state.values?.email}
-          />
+          <EmailInput name="email" defaultValue={state.values?.email} />
         </Field>
 
         <Field
@@ -93,12 +107,28 @@ function SignUpFlow({
           hint={`At least ${MIN_PASSWORD_LENGTH} characters.`}
           error={state.fieldErrors?.password}
         >
-          <PasswordInput name="password" autoComplete="new-password" />
+          <AuthPasswordInput
+            name="password"
+            autoComplete="new-password"
+            onChange={(event) => setPassword(event.target.value)}
+          />
         </Field>
+        <PasswordStrength value={password} min={MIN_PASSWORD_LENGTH} />
 
-        <Button type="submit" size="lg" fullWidth loading={pending} className="mt-1">
-          Create account
-        </Button>
+        <div className="mt-1 flex flex-col gap-3">
+          <Button
+            type="submit"
+            size="lg"
+            fullWidth
+            loading={pending}
+            className="auth-submit shadow-float"
+          >
+            Create account
+          </Button>
+          <p className="text-center text-caption text-muted">
+            Free account · No credit card required
+          </p>
+        </div>
       </form>
 
       <AuthFooterLink prompt="Already have an account?" href={withNext(routes.signIn, next)}>
@@ -121,9 +151,10 @@ function CheckEmail({
 
   return (
     <div className="flex flex-col">
-      <span className="mb-6 flex size-12 items-center justify-center rounded-pill bg-surface-alt text-ink">
+      <AuthProgress active={pending} />
+      <AuthBadge>
         <MailCheck size={iconSize.lg} strokeWidth={iconStroke} />
-      </span>
+      </AuthBadge>
       <AuthHeading
         title="Check your email"
         description={
@@ -135,15 +166,29 @@ function CheckEmail({
       />
 
       {state.message ? (
-        <FormMessage tone={state.status === "error" ? "error" : "success"} className="mb-5">
+        <FormMessage
+          tone={state.status === "error" ? "error" : "success"}
+          className={cn("mb-5", state.status === "error" ? "animate-shake" : "animate-rise-in")}
+        >
           {state.message}
         </FormMessage>
       ) : null}
 
-      <form action={action} className="flex flex-col gap-3">
+      <form
+        action={action}
+        className={cn("flex flex-col gap-3", enter(2).className)}
+        style={enter(2).style}
+      >
         <input type="hidden" name="email" value={email} />
         <input type="hidden" name="next" value={next} />
-        <Button type="submit" variant="secondary" size="lg" fullWidth loading={pending}>
+        <Button
+          type="submit"
+          variant="secondary"
+          size="lg"
+          fullWidth
+          loading={pending}
+          className="auth-submit"
+        >
           Send the link again
         </Button>
         <Button type="button" variant="ghost" size="lg" fullWidth onClick={onRestart}>

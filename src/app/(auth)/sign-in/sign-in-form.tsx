@@ -2,13 +2,23 @@
 
 import { useActionState, useRef } from "react";
 import Link from "next/link";
-import { Button, Field, FormMessage, Input, PasswordInput } from "@/components/ui";
+import { Button, Field } from "@/components/ui";
 import { routes } from "@/config/routes";
 import { signIn } from "@/lib/auth/actions";
 import { withNext } from "@/lib/auth/redirects";
+import { cn } from "@/lib/utils/cn";
+import {
+  AuthAlert,
+  AuthPasswordInput,
+  AuthProgress,
+  EmailInput,
+  useSubmitCount,
+} from "../_components/auth-fields";
 import {
   AuthFooterLink,
   AuthHeading,
+  AuthTabs,
+  enter,
   initialFormState,
   useFocusFirstError,
 } from "../_components/auth-ui";
@@ -17,35 +27,42 @@ export function SignInForm({ next, notice }: { next: string; notice?: string }) 
   const [state, action, pending] = useActionState(signIn, initialFormState);
   const formRef = useRef<HTMLFormElement>(null);
   useFocusFirstError(formRef, state);
+  const submits = useSubmitCount();
+  const formMotion = enter(2);
 
   return (
     <>
+      <AuthProgress active={pending} />
+      <AuthTabs current="sign-in" next={next} />
       <AuthHeading title="Welcome back" description="Sign in to see and manage your invoices." />
 
-      <form ref={formRef} action={action} noValidate className="flex flex-col gap-5">
+      <form
+        ref={formRef}
+        action={action}
+        onSubmit={submits.onSubmit}
+        noValidate
+        data-auth-form
+        aria-busy={pending || undefined}
+        className={cn("flex flex-col gap-5", formMotion.className)}
+        style={formMotion.style}
+      >
         {state.message ? (
-          <FormMessage>{state.message}</FormMessage>
+          <AuthAlert attempt={submits.count}>{state.message}</AuthAlert>
         ) : notice ? (
-          <FormMessage tone="info">{notice}</FormMessage>
+          <AuthAlert attempt={0} tone="info">
+            {notice}
+          </AuthAlert>
         ) : null}
 
         <input type="hidden" name="next" value={next} />
 
         <Field label="Email" error={state.fieldErrors?.email}>
-          <Input
-            name="email"
-            type="email"
-            inputMode="email"
-            autoComplete="email"
-            autoCapitalize="none"
-            spellCheck={false}
-            defaultValue={state.values?.email}
-          />
+          <EmailInput name="email" defaultValue={state.values?.email} />
         </Field>
 
         <div className="flex flex-col gap-1">
           <Field label="Password" error={state.fieldErrors?.password}>
-            <PasswordInput name="password" autoComplete="current-password" />
+            <AuthPasswordInput name="password" autoComplete="current-password" />
           </Field>
           <Link
             href={routes.forgotPassword}
@@ -55,7 +72,13 @@ export function SignInForm({ next, notice }: { next: string; notice?: string }) 
           </Link>
         </div>
 
-        <Button type="submit" size="lg" fullWidth loading={pending}>
+        <Button
+          type="submit"
+          size="lg"
+          fullWidth
+          loading={pending}
+          className="auth-submit shadow-float"
+        >
           Sign in
         </Button>
       </form>

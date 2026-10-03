@@ -1,9 +1,18 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useState, useTransition, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Archive, FileText, Plus, Search, Trash2 } from "lucide-react";
+import {
+  Archive,
+  ArrowRight,
+  CircleCheck,
+  Clock,
+  FileText,
+  PencilLine,
+  Search,
+  Trash2,
+} from "lucide-react";
 import {
   Button,
   Dialog,
@@ -19,6 +28,7 @@ import { Container } from "@/components/layout/container";
 import { routes } from "@/config/routes";
 import { formatMoney } from "@/lib/format/currency";
 import { formatDate } from "@/lib/format/date";
+import { cn } from "@/lib/utils/cn";
 import {
   SORT_OPTIONS,
   STATUS_FILTERS,
@@ -29,24 +39,52 @@ import {
   selectAttentionDrafts,
   sortInvoices,
   statusCounts,
+  totalsByCurrency,
   type InvoiceSort,
   type SavedInvoiceSummary,
   type StatusFilter,
 } from "@/features/invoices/model";
 import { deleteInvoices, setInvoicesArchived } from "@/features/invoices/actions";
+import { DashboardHero, type DashboardStat } from "./dashboard-hero";
 import { InvoiceMenu, StatusMenu } from "./invoice-actions";
+
+const statIcon = { size: iconSize.sm, strokeWidth: iconStroke };
 
 function shortDate(iso: string | null): string | null {
   if (!iso) return null;
   return formatDate(iso.slice(0, 10), "en-US", "short");
 }
 
-function Stat({ label, value }: { label: string; value: number }) {
+const plural = (count: number, word: string) => `${count} ${word}${count === 1 ? "" : "s"}`;
+
+/**
+ * One amount for a group of invoices, in its largest currency (amounts in
+ * different currencies are never added up). `others` counts the rest.
+ */
+function groupTotal(invoices: SavedInvoiceSummary[], fallbackCurrency: string) {
+  const [first, ...rest] = totalsByCurrency(invoices);
+  return {
+    value: formatMoney(first?.total ?? 0, first?.currency ?? fallbackCurrency),
+    others: rest.length,
+  };
+}
+
+const otherCurrencies = (others: number) =>
+  others === 0 ? "" : ` · +${others} other ${others === 1 ? "currency" : "currencies"}`;
+
+/** Client initial on a soft sky tile; the invoice icon when there's no client yet. */
+function ClientTile({ name, className }: { name: string; className?: string }) {
+  const initial = name.trim().charAt(0).toUpperCase();
   return (
-    <div className="min-w-0 rounded-lg border border-border bg-surface px-4 py-3">
-      <p className="truncate text-caption text-muted">{label}</p>
-      <p className="mt-0.5 text-h2 text-ink tabular-nums">{value}</p>
-    </div>
+    <span
+      aria-hidden
+      className={cn(
+        "flex size-10 shrink-0 items-center justify-center rounded-pill bg-sky-50 text-label text-sky-700",
+        className,
+      )}
+    >
+      {initial || <FileText size={iconSize.sm} strokeWidth={iconStroke} />}
+    </span>
   );
 }
 
@@ -54,10 +92,25 @@ function InvoiceLink({ id, number }: { id: string; number: string }) {
   return (
     <Link
       href={routes.invoice(id)}
-      className="min-w-0 truncate text-body font-medium text-ink underline-offset-4 hover:underline"
+      className="block min-w-0 truncate text-body font-medium text-ink underline-offset-4 hover:underline"
     >
       {number}
     </Link>
+  );
+}
+
+/** Number over client name, with the client tile. */
+function InvoiceIdentity({ invoice }: { invoice: SavedInvoiceSummary }) {
+  return (
+    <div className="flex min-w-0 items-center gap-3">
+      <ClientTile name={invoice.clientName} />
+      <div className="flex min-w-0 flex-col">
+        <InvoiceLink id={invoice.id} number={invoice.number} />
+        <span className="truncate text-caption text-muted">
+          {invoice.clientName || "No client yet"}
+        </span>
+      </div>
+    </div>
   );
 }
 
@@ -96,43 +149,134 @@ function InvoiceCard({
   const updated = shortDate(invoice.updatedAt);
   const due = shortDate(invoice.dueDate);
   return (
-    <li className="flex min-w-0 flex-col gap-2 rounded-lg border border-border bg-surface p-4">
+    <li
+      className={cn(
+        "flex min-w-0 flex-col gap-4 rounded-2xl border p-4 transition-[border-color,box-shadow] duration-150 ease-standard hover:shadow-soft",
+        selected ? "border-sky-300 bg-sky-50" : "border-border bg-white",
+      )}
+    >
       <div className="flex min-w-0 items-center gap-1">
-        <RowSelect checked={selected} onChange={onToggle} label={`Select ${invoice.number}`} />
-        <div className="flex min-w-0 flex-1 items-center justify-between gap-3">
-          <InvoiceLink id={invoice.id} number={invoice.number} />
-          <StatusMenu invoice={invoice} />
+        <div className="min-w-0 flex-1">
+          <InvoiceIdentity invoice={invoice} />
         </div>
+        <StatusMenu invoice={invoice} />
       </div>
-      <p className="truncate text-body text-muted">{invoice.clientName || "No client yet"}</p>
-      <div className="flex items-end justify-between gap-3 pt-1">
+      <div className="flex items-end justify-between gap-3 border-t border-border pt-3">
         <div className="flex min-w-0 flex-col gap-0.5">
-          <p className="text-body font-medium text-ink tabular-nums">
+          <p className="truncate text-h3 text-ink tabular-nums">
             {formatMoney(invoice.total, invoice.currency)}
           </p>
-          <p className="text-caption text-muted">
-            {due ? `Due ${due}` : "No due date"}
-            {updated ? ` · Updated ${updated}` : null}
+          <p className="truncate text-caption text-muted">
+            {due ? `Due ${due}` : updated ? `Updated ${updated}` : "No due date"}
           </p>
         </div>
-        <InvoiceMenu invoice={invoice} />
+        <div className="-mr-2 flex shrink-0 items-center">
+          <RowSelect checked={selected} onChange={onToggle} label={`Select ${invoice.number}`} />
+          <InvoiceMenu invoice={invoice} />
+        </div>
       </div>
     </li>
   );
 }
 
+/** Drafts spotlight: each draft is one big link back into the editor. */
+function DraftCard({ invoice }: { invoice: SavedInvoiceSummary }) {
+  const updated = shortDate(invoice.updatedAt);
+  return (
+    <li className="min-w-0">
+      <Link
+        href={routes.invoiceEdit(invoice.id)}
+        aria-label={`Continue editing ${invoice.number}`}
+        className="group flex h-full min-w-0 items-center gap-3 rounded-xl bg-white p-4 shadow-soft transition-[translate,box-shadow] duration-150 ease-standard hover:-translate-y-px hover:shadow-float"
+      >
+        <ClientTile name={invoice.clientName} />
+        <span className="flex min-w-0 flex-1 flex-col">
+          <span className="truncate text-body font-medium text-ink">{invoice.number}</span>
+          <span className="truncate text-caption text-muted">
+            {invoice.clientName || "No client yet"}
+            {updated ? ` · ${updated}` : null}
+          </span>
+        </span>
+        <span className="flex shrink-0 items-center gap-1 text-label text-sky-700">
+          <span className="max-sm:sr-only">Continue</span>
+          <ArrowRight
+            size={iconSize.sm}
+            strokeWidth={iconStroke}
+            aria-hidden
+            className="transition-transform duration-150 ease-standard group-hover:translate-x-0.5"
+          />
+        </span>
+      </Link>
+    </li>
+  );
+}
+
+/** Status filter as pills with counts. Scrolls sideways on narrow screens. */
+function StatusChips({
+  value,
+  onChange,
+  counts,
+  total,
+}: {
+  value: StatusFilter;
+  onChange: (next: StatusFilter) => void;
+  counts: Record<Exclude<StatusFilter, "all">, number>;
+  total: number;
+}) {
+  // Cancelled only earns a chip once something is cancelled (or it's selected).
+  const options = STATUS_FILTERS.filter(
+    (option) => option.id !== "cancelled" || counts.cancelled > 0 || value === "cancelled",
+  );
+  return (
+    <div className="-mx-gutter [scrollbar-width:none] overflow-x-auto px-gutter lg:mx-0 lg:px-0">
+      <div role="group" aria-label="Filter by status" className="flex w-max items-center gap-1.5">
+        {options.map((option) => {
+          const active = option.id === value;
+          const count = option.id === "all" ? total : counts[option.id];
+          return (
+            <button
+              key={option.id}
+              type="button"
+              aria-pressed={active}
+              onClick={() => onChange(option.id)}
+              className={cn(
+                "inline-flex min-h-10 items-center gap-2 rounded-pill px-3.5 text-label transition-colors duration-150 pointer-coarse:min-h-11",
+                active ? "bg-ink text-white" : "bg-mist text-ink hover:bg-mist-strong",
+              )}
+            >
+              {option.label}
+              <span
+                className={cn(
+                  "min-w-5 rounded-pill px-1.5 text-center text-caption tabular-nums",
+                  active ? "bg-white/16 text-white" : "bg-white text-muted",
+                )}
+              >
+                {count}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 /**
- * The dashboard list. Phones get one card per invoice, tablets get two
- * columns of cards, desktops get a table — selection, sorting and the archive
- * view work the same in all three. Search, filter and sort are client-side
- * over the recent invoices the server provided, so every keystroke is instant.
+ * The dashboard. A sky banner with the money overview, a drafts spotlight,
+ * then the list: one card per invoice on phones, two columns on tablets, a
+ * table on desktops. Selection, sorting and the archive view work the same in
+ * all three. Search, filter and sort are client-side over the recent invoices
+ * the server provided, so every keystroke is instant.
  */
 export function DashboardView({
   invoices,
   greeting,
+  empty,
 }: {
   invoices: SavedInvoiceSummary[];
   greeting: string;
+  /** Shown instead of the list until the first invoice is saved. */
+  empty: ReactNode;
 }) {
   const router = useRouter();
   const { toast } = useToast();
@@ -146,6 +290,7 @@ export function DashboardView({
 
   const { active, archived } = useMemo(() => partitionArchived(invoices), [invoices]);
   const scope = showArchived ? archived : active;
+  const hasInvoices = active.length > 0 || archived.length > 0;
 
   const visible = useMemo(
     () =>
@@ -159,8 +304,20 @@ export function DashboardView({
     [scope, query, filter, sort],
   );
   const counts = useMemo(() => statusCounts(active), [active]);
-  const awaiting = counts.sent + counts.overdue;
+  const scopeCounts = useMemo(() => statusCounts(scope), [scope]);
   const attention = useMemo(() => selectAttentionDrafts(active), [active]);
+
+  const overview = useMemo(() => {
+    const fallback = invoices[0]?.currency ?? "USD";
+    const awaiting = active.filter((i) => i.status === "sent" || i.status === "overdue");
+    const paid = active.filter((i) => i.status === "paid");
+    return {
+      awaitingCount: awaiting.length,
+      awaiting: groupTotal(awaiting, fallback),
+      paidCount: paid.length,
+      paid: groupTotal(paid, fallback),
+    };
+  }, [active, invoices]);
 
   // A new search, filter, sort or view starts with a clean selection.
   // (Stale ids from a server refresh are harmless: only visible ids count.)
@@ -230,299 +387,313 @@ export function DashboardView({
     });
   };
 
-  const showAllDrafts = () => {
-    setQuery("");
-    setFilter("draft");
+  const changeFilter = (next: StatusFilter) => {
+    setFilter(next);
     clearSelection();
-    document.getElementById("invoice-results")?.scrollIntoView({ block: "nearest" });
   };
 
+  const showAllDrafts = () => {
+    setQuery("");
+    setShowArchived(false);
+    changeFilter("draft");
+    document.getElementById("invoices-heading")?.scrollIntoView({ block: "start" });
+  };
+
+  const summary = !hasInvoices
+    ? "Your invoices will live here. Let's make the first one."
+    : overview.awaitingCount > 0
+      ? `${overview.awaiting.value} is waiting on ${plural(overview.awaitingCount, "invoice")}.` +
+        (counts.overdue > 0
+          ? ` ${counts.overdue} ${counts.overdue === 1 ? "is" : "are"} overdue.`
+          : "")
+      : counts.draft > 0
+        ? `Nothing waiting on payment. ${plural(counts.draft, "draft")} to finish.`
+        : "You're all caught up. Nothing waiting on payment.";
+
+  const stats: DashboardStat[] | undefined = hasInvoices
+    ? [
+        {
+          label: "Outstanding",
+          value: overview.awaiting.value,
+          note:
+            plural(overview.awaitingCount, "invoice") +
+            (counts.overdue > 0 ? ` · ${counts.overdue} overdue` : "") +
+            otherCurrencies(overview.awaiting.others),
+          icon: <Clock {...statIcon} />,
+        },
+        {
+          label: "Paid",
+          value: overview.paid.value,
+          note: plural(overview.paidCount, "invoice") + otherCurrencies(overview.paid.others),
+          icon: <CircleCheck {...statIcon} />,
+        },
+        {
+          label: "Drafts",
+          value: String(counts.draft),
+          note: counts.draft > 0 ? "Ready to finish" : "None open",
+          icon: <PencilLine {...statIcon} />,
+        },
+        {
+          label: "All invoices",
+          value: String(active.length),
+          note: archived.length > 0 ? `${archived.length} archived` : "In your account",
+          icon: <FileText {...statIcon} />,
+        },
+      ]
+    : undefined;
+
   const resultSummary = showArchived
-    ? `Showing ${visible.length} of ${archived.length} archived invoice${archived.length === 1 ? "" : "s"}.`
+    ? `Showing ${visible.length} of ${plural(archived.length, "archived invoice")}.`
     : visible.length === active.length
-      ? `Showing all ${active.length} invoices.`
-      : `Showing ${visible.length} of ${active.length} invoices.`;
+      ? `Showing all ${plural(active.length, "invoice")}.`
+      : `Showing ${visible.length} of ${plural(active.length, "invoice")}.`;
 
   return (
-    <main id="main" className="flex-1 py-6 md:py-8">
-      <Container className="flex flex-col gap-6 md:gap-8">
-        <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
-          <div className="flex min-w-0 flex-col gap-1">
-            <h1 className="text-h2 text-ink">{greeting}</h1>
-            <p className="text-body text-muted">
-              {active.length === 0 && archived.length === 0
-                ? "Track and manage your invoices."
-                : `${active.length} saved invoice${active.length === 1 ? "" : "s"}.`}
-            </p>
-          </div>
-          <Link href={routes.createInvoice} className={buttonStyles()}>
-            <Plus size={iconSize.md} strokeWidth={iconStroke} aria-hidden />
-            Create invoice
-          </Link>
-        </div>
+    <main id="main" className="flex-1 pt-2 pb-12 sm:pt-3 md:pb-16">
+      <Container className="flex flex-col gap-8 max-sm:px-2 md:gap-10">
+        <DashboardHero
+          greeting={greeting}
+          summary={summary}
+          stats={stats}
+          showAction={hasInvoices}
+        />
 
-        {active.length > 0 || archived.length > 0 ? (
-          <>
-            {!showArchived ? (
-              <>
-                <div
-                  className="grid grid-cols-2 gap-3 sm:grid-cols-4"
-                  role="group"
-                  aria-label="Invoice overview"
-                >
-                  <Stat label="Total" value={active.length} />
-                  <Stat label="Drafts" value={counts.draft} />
-                  <Stat label="Awaiting payment" value={awaiting} />
-                  <Stat label="Paid" value={counts.paid} />
-                </div>
-
-                {attention.length > 0 ? (
-                  <section
-                    aria-labelledby="attention-heading"
-                    className="flex flex-col gap-1 rounded-xl border border-border bg-surface p-4 sm:p-5"
-                  >
-                    <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-                      <h2 id="attention-heading" className="text-h3 text-ink">
-                        Needs attention
-                      </h2>
-                      {counts.draft > attention.length ? (
-                        <button
-                          type="button"
-                          onClick={showAllDrafts}
-                          className="inline-flex min-h-11 items-center text-label text-ink underline-offset-4 hover:underline"
-                        >
-                          View all {counts.draft} drafts
-                        </button>
-                      ) : null}
-                    </div>
-                    <p className="text-body text-muted">
-                      Unfinished drafts — continue where you left off.
+        {!hasInvoices ? (
+          empty
+        ) : (
+          <div className="flex flex-col gap-8 max-sm:px-2 md:gap-10">
+            {attention.length > 0 ? (
+              <section
+                aria-labelledby="attention-heading"
+                className="flex flex-col gap-4 rounded-xl bg-mist p-4 sm:rounded-3xl sm:p-6"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+                  <div className="flex flex-col gap-0.5">
+                    <h2 id="attention-heading" className="text-h3 text-ink">
+                      Pick up where you left off
+                    </h2>
+                    <p className="text-label font-normal text-muted">
+                      Unfinished drafts, newest first.
                     </p>
-                    <ul className="mt-2 flex flex-col">
-                      {attention.map((invoice) => (
-                        <li
-                          key={invoice.id}
-                          className="flex items-center justify-between gap-3 border-t border-border py-2.5 first:border-t-0 first:pt-1 last:pb-0"
-                        >
-                          <div className="flex min-w-0 flex-col gap-0.5">
-                            <InvoiceLink id={invoice.id} number={invoice.number} />
-                            <p className="truncate text-caption text-muted">
-                              {invoice.clientName || "No client yet"}
-                              {shortDate(invoice.updatedAt)
-                                ? ` · Updated ${shortDate(invoice.updatedAt)}`
-                                : null}
-                            </p>
-                          </div>
-                          <Link
-                            href={routes.invoiceEdit(invoice.id)}
-                            aria-label={`Continue editing ${invoice.number}`}
-                            className="inline-flex min-h-11 shrink-0 items-center text-label text-ink underline-offset-4 hover:underline"
-                          >
-                            Continue
-                          </Link>
-                        </li>
-                      ))}
-                    </ul>
-                  </section>
-                ) : null}
-              </>
+                  </div>
+                  {counts.draft > attention.length ? (
+                    <button
+                      type="button"
+                      onClick={showAllDrafts}
+                      className="inline-flex min-h-11 items-center text-label text-ink underline-offset-4 hover:underline"
+                    >
+                      View all {counts.draft} drafts
+                    </button>
+                  ) : null}
+                </div>
+                <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {attention.map((invoice) => (
+                    <DraftCard key={invoice.id} invoice={invoice} />
+                  ))}
+                </ul>
+              </section>
             ) : null}
 
-            <div className="flex flex-col gap-3 sm:flex-row">
-              <div className="min-w-0 flex-1">
-                <label htmlFor="invoice-search" className="mb-1.5 block text-label text-ink">
-                  Search
-                </label>
-                <Input
-                  id="invoice-search"
-                  type="search"
-                  value={query}
-                  onChange={(event) => {
-                    setQuery(event.target.value);
-                    clearSelection();
-                  }}
-                  placeholder="Invoice number, client or email…"
-                  autoComplete="off"
-                  leading={
-                    <Search
-                      size={iconSize.md}
-                      strokeWidth={iconStroke}
-                      aria-hidden
-                      className="text-muted"
-                    />
-                  }
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-3 sm:flex sm:flex-row">
-                <div className="min-w-0 sm:w-44 sm:shrink-0">
-                  <label htmlFor="invoice-status" className="mb-1.5 block text-label text-ink">
-                    Status
-                  </label>
-                  <Select
-                    id="invoice-status"
-                    value={filter}
-                    onChange={(event) => {
-                      setFilter(event.target.value as StatusFilter);
-                      clearSelection();
-                    }}
-                    options={STATUS_FILTERS.map((option) => ({
-                      value: option.id,
-                      label: option.label,
-                    }))}
-                  />
+            <section aria-labelledby="invoices-heading" className="flex flex-col gap-4">
+              <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-1">
+                <div className="flex flex-col gap-0.5">
+                  <h2 id="invoices-heading" className="scroll-mt-24 text-h2 text-ink">
+                    {showArchived ? "Archived invoices" : "Invoices"}
+                  </h2>
+                  <p aria-live="polite" className="text-label font-normal text-muted">
+                    {resultSummary}
+                  </p>
                 </div>
-                <div className="min-w-0 sm:w-52 sm:shrink-0">
-                  <label htmlFor="invoice-sort" className="mb-1.5 block text-label text-ink">
-                    Sort
-                  </label>
-                  <Select
-                    id="invoice-sort"
-                    value={sort}
-                    onChange={(event) => {
-                      setSort(isInvoiceSort(event.target.value) ? event.target.value : "updated");
-                      clearSelection();
-                    }}
-                    options={SORT_OPTIONS.map((option) => ({
-                      value: option.id,
-                      label: option.label,
-                    }))}
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-              <p
-                id="invoice-results"
-                aria-live="polite"
-                className="scroll-mt-24 text-label font-normal text-muted"
-              >
-                {resultSummary}
-              </p>
-              {archived.length > 0 || showArchived ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowArchived((previous) => !previous);
-                    clearSelection();
-                  }}
-                  className="inline-flex min-h-11 items-center text-label text-ink underline-offset-4 hover:underline"
-                >
-                  {showArchived ? "Back to invoices" : `View archived (${archived.length})`}
-                </button>
-              ) : null}
-            </div>
-
-            {visible.length === 0 ? (
-              <EmptyState
-                title={showArchived ? "No archived invoices match." : "No invoices match."}
-                description={
-                  showArchived && archived.length === 0
-                    ? "Archived invoices stay here until you restore or delete them."
-                    : "Try a different search, status or sort."
-                }
-                action={
+                {archived.length > 0 || showArchived ? (
                   <button
                     type="button"
                     onClick={() => {
-                      setQuery("");
-                      setFilter("all");
+                      setShowArchived((previous) => !previous);
                       clearSelection();
-                      if (showArchived && archived.length === 0) setShowArchived(false);
                     }}
-                    className={buttonStyles({ variant: "secondary" })}
+                    className="inline-flex min-h-11 items-center gap-1.5 text-label text-ink underline-offset-4 hover:underline"
                   >
-                    {showArchived && archived.length === 0
-                      ? "Back to invoices"
-                      : "Clear search and filters"}
+                    <Archive size={iconSize.sm} strokeWidth={iconStroke} aria-hidden />
+                    {showArchived ? "Back to invoices" : `View archived (${archived.length})`}
                   </button>
-                }
-              />
-            ) : (
-              <>
-                <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:hidden">
-                  {visible.map((invoice) => (
-                    <InvoiceCard
-                      key={invoice.id}
-                      invoice={invoice}
-                      selected={selected.has(invoice.id)}
-                      onToggle={(next) => toggleSelected(invoice.id, next)}
-                    />
-                  ))}
-                </ul>
+                ) : null}
+              </div>
 
-                <div className="hidden overflow-hidden rounded-lg border border-border bg-surface xl:block">
-                  <table className="w-full border-collapse text-left">
-                    <thead>
-                      <tr className="border-b border-border">
-                        <th scope="col" className="w-14 px-2 py-3 pl-4">
-                          <RowSelect
-                            checked={allVisibleSelected}
-                            onChange={(next) => setSelected(next ? new Set(visibleIds) : new Set())}
-                            label="Select all invoices shown"
-                          />
-                        </th>
-                        {["Invoice", "Client", "Status", "Due", "Updated"].map((heading) => (
-                          <th
-                            key={heading}
-                            scope="col"
-                            className="px-4 py-3 text-label font-medium text-muted"
-                          >
-                            {heading}
-                          </th>
-                        ))}
-                        <th
-                          scope="col"
-                          className="px-4 py-3 text-right text-label font-medium text-muted"
-                        >
-                          Amount
-                        </th>
-                        <th scope="col" className="px-4 py-3">
-                          <span className="sr-only">Actions</span>
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {visible.map((invoice) => (
-                        <tr key={invoice.id} className="border-b border-border last:border-0">
-                          <td className="px-2 py-1.5 pl-4">
-                            <RowSelect
-                              checked={selected.has(invoice.id)}
-                              onChange={(next) => toggleSelected(invoice.id, next)}
-                              label={`Select ${invoice.number}`}
-                            />
-                          </td>
-                          <td className="max-w-44 px-4 py-3">
-                            <InvoiceLink id={invoice.id} number={invoice.number} />
-                          </td>
-                          <td className="max-w-52 truncate px-4 py-3 text-body text-muted">
-                            {invoice.clientName || "—"}
-                          </td>
-                          <td className="px-4 py-3">
-                            <StatusMenu invoice={invoice} />
-                          </td>
-                          <td className="px-4 py-3 text-body whitespace-nowrap text-muted">
-                            {shortDate(invoice.dueDate) ?? "—"}
-                          </td>
-                          <td className="px-4 py-3 text-body whitespace-nowrap text-muted">
-                            {shortDate(invoice.updatedAt) ?? "—"}
-                          </td>
-                          <td className="px-4 py-3 text-right text-body font-medium whitespace-nowrap text-ink tabular-nums">
-                            {formatMoney(invoice.total, invoice.currency)}
-                          </td>
-                          <td className="px-4 py-3 text-right">
-                            <InvoiceMenu invoice={invoice} />
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <StatusChips
+                  value={filter}
+                  onChange={changeFilter}
+                  counts={scopeCounts}
+                  total={scope.length}
+                />
+                <div className="flex min-w-0 flex-col gap-2 sm:flex-row lg:w-md lg:shrink-0 xl:w-lg">
+                  <div className="min-w-0 flex-1">
+                    <label htmlFor="invoice-search" className="sr-only">
+                      Search invoices
+                    </label>
+                    <Input
+                      id="invoice-search"
+                      type="search"
+                      value={query}
+                      onChange={(event) => {
+                        setQuery(event.target.value);
+                        clearSelection();
+                      }}
+                      placeholder="Search number, client or email"
+                      autoComplete="off"
+                      className="rounded-pill"
+                      leading={
+                        <Search
+                          size={iconSize.md}
+                          strokeWidth={iconStroke}
+                          aria-hidden
+                          className="text-muted"
+                        />
+                      }
+                    />
+                  </div>
+                  <div className="shrink-0 sm:w-48">
+                    <label htmlFor="invoice-sort" className="sr-only">
+                      Sort invoices
+                    </label>
+                    <Select
+                      id="invoice-sort"
+                      value={sort}
+                      onChange={(event) => {
+                        setSort(isInvoiceSort(event.target.value) ? event.target.value : "updated");
+                        clearSelection();
+                      }}
+                      className="rounded-pill"
+                      options={SORT_OPTIONS.map((option) => ({
+                        value: option.id,
+                        label: option.label,
+                      }))}
+                    />
+                  </div>
                 </div>
-              </>
-            )}
+              </div>
+
+              {visible.length === 0 ? (
+                <div className="rounded-xl bg-mist sm:rounded-3xl">
+                  <EmptyState
+                    title={showArchived ? "No archived invoices match." : "No invoices match."}
+                    description={
+                      showArchived && archived.length === 0
+                        ? "Archived invoices stay here until you restore or delete them."
+                        : "Try a different search, status or sort."
+                    }
+                    action={
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setQuery("");
+                          setFilter("all");
+                          clearSelection();
+                          if (showArchived && archived.length === 0) setShowArchived(false);
+                        }}
+                        className={buttonStyles({ variant: "secondary" })}
+                      >
+                        {showArchived && archived.length === 0
+                          ? "Back to invoices"
+                          : "Clear search and filters"}
+                      </button>
+                    }
+                  />
+                </div>
+              ) : (
+                <>
+                  <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:hidden">
+                    {visible.map((invoice) => (
+                      <InvoiceCard
+                        key={invoice.id}
+                        invoice={invoice}
+                        selected={selected.has(invoice.id)}
+                        onToggle={(next) => toggleSelected(invoice.id, next)}
+                      />
+                    ))}
+                  </ul>
+
+                  <div className="hidden overflow-hidden rounded-2xl border border-border bg-white xl:block">
+                    <table className="w-full border-collapse text-left">
+                      <thead className="bg-mist">
+                        <tr>
+                          <th scope="col" className="w-14 py-1 pl-4">
+                            <RowSelect
+                              checked={allVisibleSelected}
+                              onChange={(next) =>
+                                setSelected(next ? new Set(visibleIds) : new Set())
+                              }
+                              label="Select all invoices shown"
+                            />
+                          </th>
+                          {["Invoice", "Status", "Due", "Updated"].map((heading) => (
+                            <th
+                              key={heading}
+                              scope="col"
+                              className="px-4 py-3 text-label font-normal text-muted"
+                            >
+                              {heading}
+                            </th>
+                          ))}
+                          <th
+                            scope="col"
+                            className="px-4 py-3 text-right text-label font-normal text-muted"
+                          >
+                            Amount
+                          </th>
+                          <th scope="col" className="w-16 px-4 py-3">
+                            <span className="sr-only">Actions</span>
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {visible.map((invoice) => {
+                          const isSelected = selected.has(invoice.id);
+                          return (
+                            <tr
+                              key={invoice.id}
+                              className={cn(
+                                "border-t border-border transition-colors duration-150",
+                                isSelected ? "bg-sky-50" : "hover:bg-mist/60",
+                              )}
+                            >
+                              <td className="py-1 pl-4">
+                                <RowSelect
+                                  checked={isSelected}
+                                  onChange={(next) => toggleSelected(invoice.id, next)}
+                                  label={`Select ${invoice.number}`}
+                                />
+                              </td>
+                              <td className="max-w-80 px-4 py-3">
+                                <InvoiceIdentity invoice={invoice} />
+                              </td>
+                              <td className="px-4 py-3">
+                                <StatusMenu invoice={invoice} />
+                              </td>
+                              <td className="px-4 py-3 text-body whitespace-nowrap text-muted">
+                                {shortDate(invoice.dueDate) ?? "—"}
+                              </td>
+                              <td className="px-4 py-3 text-body whitespace-nowrap text-muted">
+                                {shortDate(invoice.updatedAt) ?? "—"}
+                              </td>
+                              <td className="px-4 py-3 text-right text-body font-medium whitespace-nowrap text-ink tabular-nums">
+                                {formatMoney(invoice.total, invoice.currency)}
+                              </td>
+                              <td className="px-4 py-3 text-right">
+                                <InvoiceMenu invoice={invoice} />
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
+            </section>
 
             {selectedIds.length > 0 ? (
-              <div className="sticky bottom-4 z-10 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-border bg-surface px-4 py-3 shadow-elevated">
+              <div className="sticky bottom-4 z-10 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl border border-border bg-white px-4 py-3 shadow-float">
                 <p aria-live="polite" className="text-label text-ink">
                   {selectedIds.length} selected
                 </p>
@@ -583,20 +754,6 @@ export function DashboardView({
                     Delete forever
                   </Button>
                 </>
-              }
-            />
-          </>
-        ) : (
-          <div className="rounded-xl border border-border bg-surface">
-            <EmptyState
-              title="No invoices yet."
-              description="Create your first invoice and it will appear here, ready to send, track and get paid."
-              icon={<FileText size={iconSize.lg} strokeWidth={iconStroke} aria-hidden />}
-              action={
-                <Link href={routes.createInvoice} className={buttonStyles()}>
-                  <Plus size={iconSize.md} strokeWidth={iconStroke} aria-hidden />
-                  Create invoice
-                </Link>
               }
             />
           </div>

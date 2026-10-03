@@ -187,6 +187,57 @@
   --animate-page-in: page-in 1.4s var(--ease-out-expo) both;
   --animate-slip-in: slip-in 1.6s var(--ease-out-expo) both;
   --animate-twinkle: twinkle 4s ease-in-out infinite;
+  --animate-float: float 7s ease-in-out infinite;
+  --animate-shake: shake 0.45s var(--ease-standard) both;
+  --animate-progress: progress 1.3s var(--ease-standard) infinite;
+  --animate-ring: ring 2.4s var(--ease-out-expo) infinite;
+  --animate-nav-in: nav-in 0.5s var(--ease-out-expo) both;
+
+  @keyframes shake {
+    0%,
+    100% {
+      translate: 0 0;
+    }
+    20% {
+      translate: -8px 0;
+    }
+    40% {
+      translate: 7px 0;
+    }
+    60% {
+      translate: -5px 0;
+    }
+    80% {
+      translate: 3px 0;
+    }
+  }
+
+  @keyframes progress {
+    from {
+      translate: -100% 0;
+    }
+    to {
+      translate: 300% 0;
+    }
+  }
+
+  @keyframes ring {
+    from {
+      opacity: 0.55;
+      scale: 1;
+    }
+    to {
+      opacity: 0;
+      scale: 1.9;
+    }
+  }
+
+  @keyframes nav-in {
+    from {
+      opacity: 0;
+      translate: 0 -24px;
+    }
+  }
   --animate-orbit: orbit 48s linear infinite;
   --animate-orbit-reverse: orbit 48s linear infinite reverse;
 
@@ -234,6 +285,16 @@
     }
     50% {
       opacity: 1;
+    }
+  }
+
+  @keyframes float {
+    0%,
+    100% {
+      translate: 0 0;
+    }
+    50% {
+      translate: 0 -10px;
     }
   }
 
@@ -501,6 +562,170 @@
       transition-duration: 0.01ms !important;
       scroll-behavior: auto !important;
     }
+  }
+}
+
+/*
+ * Cool theme scope (landing and auth pages). Re-maps the warm neutrals to the
+ * white / mist family of the sky design, so shared primitives (inputs,
+ * secondary buttons, segmented controls, form messages) match those pages
+ * without forking them. The app itself keeps the warm canvas.
+ */
+.theme-cool {
+  --color-canvas: #ffffff;
+  --color-surface: #ffffff;
+  --color-surface-alt: var(--color-mist);
+  --color-border: var(--color-mist-strong);
+  --color-border-strong: #dde2ea;
+}
+
+/* The invoice document is the product's output: it must look the same in
+   every preview, print and PDF, so it keeps the original neutrals (same
+   values as the @theme block) even inside a cool scope. */
+.theme-cool .invoice-doc {
+  --color-canvas: #fffcfa;
+  --color-surface: #fffefe;
+  --color-surface-alt: #f7f2ed;
+  --color-border: #efe6dc;
+  --color-border-strong: #e6dbd1;
+}
+
+/*
+ * Auth form interactions (sign in, sign up, password pages). Scoped to
+ * `[data-auth-form]`; inputs opt in with the `auth-input` class (it lands on
+ * the Input's frame because every auth field has a leading icon).
+ * - Focus: sky border with a soft glow, the label turns sky and nudges right,
+ *   the field's icon pops.
+ * - Typing: the icon stays sky once there's a value; a check pops in when an
+ *   email is valid (`[data-valid-check]`).
+ * - Errors: invalid fields shake once and keep the error border.
+ * - Submit (`auth-submit`): a light sweep on hover, a press on click, and a
+ *   looping shimmer while the request is in flight (aria-busy).
+ * Unlayered so these win over the primitives' utility classes. Motion is
+ * collapsed for reduced-motion users by the global rule in @layer base.
+ */
+[data-auth-form] .auth-input {
+  transition:
+    border-color 0.2s var(--ease-standard),
+    box-shadow 0.35s var(--ease-out-expo),
+    opacity 0.3s var(--ease-standard);
+}
+
+@media (hover: hover) {
+  [data-auth-form] .auth-input:hover:not(:focus-within) {
+    border-color: var(--color-sky-300);
+  }
+}
+
+[data-auth-form] .auth-input:focus-within {
+  border-color: var(--color-sky-500);
+  box-shadow:
+    0 0 0 4px rgb(119 149 198 / 0.18),
+    0 8px 20px -10px rgb(85 119 168 / 0.45);
+}
+
+[data-auth-form] .auth-input:has([aria-invalid="true"]) {
+  border-color: var(--color-error);
+  animation: shake 0.45s var(--ease-standard);
+}
+
+[data-auth-form] .auth-input:has([aria-invalid="true"]):focus-within {
+  box-shadow: 0 0 0 4px rgb(239 67 67 / 0.14);
+}
+
+[data-auth-form] .auth-input > span:first-child svg {
+  transition:
+    color 0.2s var(--ease-standard),
+    scale 0.45s var(--ease-spring);
+}
+
+[data-auth-form] .auth-input:focus-within > span:first-child svg {
+  color: var(--color-sky-600);
+  scale: 1.15;
+}
+
+[data-auth-form] .auth-input:has(input:not(:placeholder-shown)) > span:first-child svg {
+  color: var(--color-sky-600);
+}
+
+[data-auth-form] label {
+  transition:
+    color 0.2s var(--ease-standard),
+    translate 0.35s var(--ease-out-expo);
+}
+
+[data-auth-form] div:focus-within > label {
+  color: var(--color-sky-700);
+  translate: 3px 0;
+}
+
+[data-auth-form] [data-valid-check] {
+  color: var(--color-success);
+  opacity: 0;
+  scale: 0.3;
+  transition:
+    opacity 0.2s var(--ease-standard),
+    scale 0.45s var(--ease-spring);
+}
+
+[data-auth-form] .auth-input:has(input:not(:placeholder-shown):valid) [data-valid-check] {
+  opacity: 1;
+  scale: 1;
+}
+
+[data-auth-form][aria-busy="true"] .auth-input {
+  opacity: 0.55;
+}
+
+.auth-submit {
+  overflow: hidden;
+  isolation: isolate;
+  transition:
+    opacity 0.15s var(--ease-standard),
+    translate 0.15s var(--ease-standard),
+    scale 0.15s var(--ease-standard),
+    box-shadow 0.25s var(--ease-standard);
+}
+
+.auth-submit::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(
+    105deg,
+    transparent 30%,
+    rgb(255 255 255 / 0.24) 50%,
+    transparent 70%
+  );
+  translate: -120% 0;
+  transition: translate 0.9s var(--ease-out-expo);
+}
+
+@media (hover: hover) {
+  .auth-submit:hover::before {
+    translate: 120% 0;
+  }
+}
+
+.auth-submit:active {
+  scale: 0.97;
+}
+
+.auth-submit[aria-busy="true"] {
+  cursor: progress;
+}
+
+.auth-submit[aria-busy="true"]::before {
+  animation: auth-shine 1.1s var(--ease-standard) infinite;
+}
+
+@keyframes auth-shine {
+  from {
+    translate: -120% 0;
+  }
+  to {
+    translate: 120% 0;
   }
 }
 

@@ -1,13 +1,14 @@
 "use client";
 
-import { useState, type ComponentProps } from "react";
+import { useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { iconSize, iconStroke } from "./icon";
 import { IconButton } from "./icon-button";
-import { Input } from "./input";
+import { Input, type InputProps } from "./input";
 
-export type PasswordInputProps = Omit<ComponentProps<"input">, "type">;
+/** Input props minus `type` and `trailing` (the show/hide toggle sits there). */
+export type PasswordInputProps = Omit<InputProps, "type" | "trailing">;
 
 /**
  * Password field with a show/hide toggle, which matters most on phones where

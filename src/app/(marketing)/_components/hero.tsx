@@ -3,7 +3,6 @@ import { buttonStyles } from "@/components/ui";
 import { routes } from "@/config/routes";
 import { HeroEnvelope } from "./hero-envelope";
 import { enterDelay, scrollOffsets } from "./motion";
-import { SiteHeader } from "./site-header";
 
 // Faint "stars" in the sky. Fixed positions (percent of the island) so the
 // server and client render the same thing.
@@ -26,7 +25,7 @@ const stars = [
 
 export function Hero() {
   return (
-    <section aria-labelledby="hero-title" className="p-2 sm:p-3">
+    <section aria-labelledby="hero-title" className="px-2 pb-2 sm:px-3 sm:pb-3">
       <div
         data-scene="exit"
         className="relative isolate overflow-hidden rounded-xl bg-linear-to-b from-sky-600 from-30% via-sky-400 via-75% to-sky-200 sm:rounded-3xl"
@@ -50,7 +49,8 @@ export function Hero() {
           ))}
         </div>
 
-        <SiteHeader />
+        {/* Room for the sticky <SiteHeader />, which overlaps the top of the island. */}
+        <div aria-hidden className="h-header" />
 
         {/* Load: each word rises out of a blur, then the copy and buttons follow.
             Scroll: the whole block drifts down, shrinks a touch and fades. */}

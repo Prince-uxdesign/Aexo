@@ -153,4 +153,4 @@ export function SmallFeature({
 }
 
 /** Vertical rhythm shared by every section below the hero. */
-export const sectionClass = "scroll-mt-6 py-20 md:py-28 lg:py-32";
+export const sectionClass = "scroll-mt-24 py-20 md:py-28 lg:py-32";

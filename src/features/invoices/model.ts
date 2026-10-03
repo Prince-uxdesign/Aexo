@@ -161,6 +161,22 @@ export function statusCounts(invoices: SavedInvoiceSummary[]): Record<InvoiceSta
   return counts;
 }
 
+/**
+ * Totals per currency, largest first. Invoices in different currencies are
+ * never added together; the dashboard shows the first and notes the rest.
+ */
+export function totalsByCurrency(
+  invoices: SavedInvoiceSummary[],
+): { currency: string; total: number }[] {
+  const sums = new Map<string, number>();
+  for (const invoice of invoices) {
+    sums.set(invoice.currency, (sums.get(invoice.currency) ?? 0) + invoice.total);
+  }
+  return [...sums]
+    .map(([currency, total]) => ({ currency, total }))
+    .sort((a, b) => b.total - a.total);
+}
+
 /* ---------------------------------------------------------- Management (Phase 17) */
 
 export const INVOICE_SORTS = ["updated", "newest", "oldest", "highest", "lowest"] as const;

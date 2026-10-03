@@ -1,5 +1,5 @@
+import type { CSSProperties } from "react";
 import { Check } from "lucide-react";
-import { iconSize } from "@/components/ui";
 import { cn } from "@/lib/utils/cn";
 
 // What an account adds (guide §16). Creating an invoice never needs one.
@@ -9,14 +9,22 @@ const benefits = [
   "Share invoices with a link",
 ];
 
-export function AccountBenefits({ className }: { className?: string }) {
+/** White pill chips for the sky panel and band. */
+export function AccountBenefits({
+  className,
+  style,
+}: {
+  className?: string;
+  style?: CSSProperties;
+}) {
   return (
-    <ul className={cn("flex flex-col gap-3", className)}>
+    <ul className={cn("flex flex-wrap gap-2", className)} style={style}>
       {benefits.map((benefit) => (
-        <li key={benefit} className="flex items-start gap-3 text-body text-ink">
-          <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-pill bg-ink text-canvas">
-            <Check size={iconSize.sm - 4} strokeWidth={2.5} />
-          </span>
+        <li
+          key={benefit}
+          className="inline-flex min-h-9 items-center gap-2 rounded-pill bg-white px-3.5 text-label font-normal text-ink shadow-soft"
+        >
+          <Check size={14} strokeWidth={2.5} className="shrink-0 text-sky-600" />
           {benefit}
         </li>
       ))}

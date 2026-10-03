@@ -9,6 +9,7 @@ import { PricingSection } from "./_components/pricing-section";
 import { ReduceFrictionSection } from "./_components/reduce-friction-section";
 import { SaveHoursSection } from "./_components/save-hours-section";
 import { SecuritySection } from "./_components/security-section";
+import { SiteHeader } from "./_components/site-header";
 import { SuperchargeSection } from "./_components/supercharge-section";
 import { TemplateShowcase } from "./_components/template-showcase";
 
@@ -20,6 +21,7 @@ export const metadata: Metadata = {
 export default function LandingPage() {
   return (
     <main id="main" className="flex-1 overflow-x-clip">
+      <SiteHeader />
       <Hero />
       <SaveHoursSection />
       <HowItWorks />

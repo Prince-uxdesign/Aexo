@@ -13,6 +13,7 @@ import {
   selectAttentionDrafts,
   sortInvoices,
   statusCounts,
+  totalsByCurrency,
   type SavedInvoiceSummary,
 } from "./model";
 
@@ -117,6 +118,25 @@ describe("statusCounts", () => {
         summary({ status: "paid" }),
       ]),
     ).toEqual({ draft: 2, sent: 0, paid: 1, overdue: 0, cancelled: 0 });
+  });
+});
+
+describe("totalsByCurrency", () => {
+  it("sums each currency separately, largest first", () => {
+    expect(
+      totalsByCurrency([
+        summary({ currency: "USD", total: 100 }),
+        summary({ currency: "EUR", total: 900 }),
+        summary({ currency: "USD", total: 50.5 }),
+      ]),
+    ).toEqual([
+      { currency: "EUR", total: 900 },
+      { currency: "USD", total: 150.5 },
+    ]);
+  });
+
+  it("is empty for no invoices", () => {
+    expect(totalsByCurrency([])).toEqual([]);
   });
 });
 

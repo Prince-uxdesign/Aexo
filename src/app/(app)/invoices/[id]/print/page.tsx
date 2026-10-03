@@ -33,7 +33,7 @@ export default async function InvoicePrintPage({ params }: PageProps<"/invoices/
   if (!invoice) notFound();
 
   return (
-    <main id="main" className="print:bg-white flex-1 bg-canvas py-6 print:py-0">
+    <main id="main" className="flex-1 bg-canvas py-6 print:bg-white print:py-0">
       <Container className="flex max-w-3xl flex-col gap-5 print:max-w-none print:px-0">
         <div
           data-print-screen-only

@@ -42,7 +42,7 @@ const clouds = [
 
 export function PricingSection() {
   return (
-    <section id="pricing" aria-labelledby="pricing-title" className="scroll-mt-6 p-2 sm:p-3">
+    <section id="pricing" aria-labelledby="pricing-title" className="scroll-mt-24 p-2 sm:p-3">
       <div
         data-scene
         className="relative isolate overflow-hidden rounded-xl bg-linear-to-b from-sky-600 via-sky-500 via-40% to-sky-200 px-gutter py-20 sm:rounded-3xl md:py-28"
