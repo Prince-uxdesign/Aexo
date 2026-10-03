@@ -47,9 +47,9 @@ export function getEmailConfig() {
         "to .env.local — see .env.example.",
     );
   }
-  return {
-    apiKey,
-    // Resend's sandbox sender works without a verified domain (test mode only).
-    from: process.env.EMAIL_FROM ?? "Aexo <onboarding@resend.dev>",
-  };
+  // `EMAIL_FROM=` (blank, as shipped in .env.example) parses as "", which `??`
+  // does not catch. Treat blank or whitespace as unset so the sandbox sender
+  // actually applies, instead of sending an empty From that Resend rejects.
+  const from = process.env.EMAIL_FROM?.trim() || "Aexo <onboarding@resend.dev>";
+  return { apiKey, from };
 }
