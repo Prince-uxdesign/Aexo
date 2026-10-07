@@ -46,4 +46,6 @@ supabase/.temp/
 
 # local tooling
 .claude/
-
+# cloudflare
+.open-next/
+.wrangler/
